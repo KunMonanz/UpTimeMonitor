@@ -10,18 +10,18 @@ from app.schemas.monitor_url_schemas import (
     MonitorUrlUpdate
 )
 
-router = APIRouter(prefix="/v1/monitors", tags=["Monitor URL"])
+router = APIRouter(prefix="/api/v1/monitors", tags=["Monitor URL"])
 
 url_monitor_repo = URLMonitorRepository()
 
 @router.post("/", response_model=MonitorUrlResponse, status_code=201)
-def create_monitor_url(payload: MonitorUrlCreate):
+async def create_monitor_url(payload: MonitorUrlCreate):
     """Create a new URL monitor entry."""
-    new_url_monitor = url_monitor_repo.add_url(str(payload.url))
+    new_url_monitor = await url_monitor_repo.add_url(payload.url)
     return new_url_monitor
 
 
 @router.get("/", response_model=list[MonitorUrlResponse])
-def get_all_monitor_urls():
+async def get_all_monitor_urls():
     """Retrieve all URL monitor entries."""
-    return url_monitor_repo.get_all_urls()
+    return await url_monitor_repo.get_all_urls()
