@@ -1,4 +1,6 @@
+from uuid import UUID
 from pydantic import BaseModel, HttpUrl
+
 
 class MonitorUrlBase(BaseModel):
     url: HttpUrl
@@ -7,12 +9,14 @@ class MonitorUrlBase(BaseModel):
 class MonitorUrlCreate(MonitorUrlBase):
     pass
 
+
 class MonitorUrlUpdate(MonitorUrlBase):
     status: bool
 
+
 class MonitorUrlResponse(MonitorUrlBase):
-    id: int
+    id: UUID
     status: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
