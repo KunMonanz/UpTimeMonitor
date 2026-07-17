@@ -55,6 +55,7 @@ async def get_monitor_url(url_id: UUID):
 
 @router.patch("/{url_id}", response_model=MonitorUrlResponse)
 async def update_monitor_url(url_id: UUID, payload: MonitorUrlBase):
+    """Update a specific URL monitor entry by its ID."""
     logger.info(f"INFO: Attempting to update URL monitor entry with ID: {url_id}")
     
     url_monitor_exists = await url_monitor_repo.update_url(

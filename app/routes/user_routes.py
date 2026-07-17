@@ -46,9 +46,9 @@ async def get_user_by_id_route(user_id: UUID):
         )
     return user_exists
 
-@router.get("/{email}", response_model=UserResponse)
-async def get_user_by_username_route(email: EmailStr):
-    user_exists = await user_repo.get_user_by_email(email)
+@router.get("/{username}", response_model=UserResponse)
+async def get_user_by_username_route(username: str):
+    user_exists = await user_repo.get_user_by_username(username)
     if not user_exists:
         raise HTTPException(
             detail="User not found",
