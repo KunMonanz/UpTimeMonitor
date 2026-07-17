@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.orm import Session
 
@@ -25,3 +25,11 @@ async def create_monitor_url(payload: MonitorUrlCreate):
 async def get_all_monitor_urls():
     """Retrieve all URL monitor entries."""
     return await url_monitor_repo.get_all_urls()
+
+@router.get("/{url_id}", response_model=MonitorUrlResponse)
+async def get_monitor_url(url_id: str):
+    """Retrieve a specific URL monitor entry by its ID."""
+    url_monitor = await url_monitor_repo.get_url_by_id(url_id)
+    if not url_monitor:
+        raise HTTPException(status_code=404, detail="URL monitor not found")
+    return url_monitor
