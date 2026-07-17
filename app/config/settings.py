@@ -5,3 +5,4 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 REDIS_URL = os.getenv("REDIS_URL")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
