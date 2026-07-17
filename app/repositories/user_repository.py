@@ -38,3 +38,10 @@ class UserRepository:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
     
+    
+    async def get_user_by_id(self, user_id) -> User | None:
+        """Retrieve a user by their di."""
+        
+        query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
