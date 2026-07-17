@@ -1,3 +1,4 @@
+from pydantic import EmailStr
 from sqlalchemy.future import select
 
 from app.config.database_config import SessionLocal
@@ -18,8 +19,6 @@ class UserRepository:
         hashed_password: str
     ) -> User:
         """Create a new user in the database."""
-        
-        hashed_password = hash_password(hashed_password)
         
         new_user = User(
             username=username, 
@@ -43,5 +42,12 @@ class UserRepository:
         """Retrieve a user by their di."""
         
         query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_user_by_email(self, email: EmailStr) -> User | None:
+        """Retrieve a user by their di."""
+        
+        query = select(User).where(User.id == email)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
