@@ -1,3 +1,7 @@
+from uuid import UUID
+from sqlalchemy import Uuid
+from uuid6 import uuid7
+
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database_config import Base
@@ -7,7 +11,7 @@ from app.config.database_config import Base
 class User(Base):
     __tablename__ = "users"
     
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
     username: Mapped[str] = mapped_column(unique=True, nullable=False)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(nullable=False)

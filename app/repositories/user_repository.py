@@ -19,6 +19,7 @@ class UserRepository:
         hashed_password: str
     ) -> User:
         """Create a new user in the database."""
+        username = username.lower()
         
         new_user = User(
             username=username, 
@@ -32,6 +33,7 @@ class UserRepository:
 
     async def get_user_by_username(self, username: str) -> User | None:
         """Retrieve a user by their username."""
+        username = username.lower()
         
         query = select(User).where(User.username == username)
         result = await self.db.execute(query)
@@ -48,6 +50,6 @@ class UserRepository:
     async def get_user_by_email(self, email: EmailStr) -> User | None:
         """Retrieve a user by their di."""
         
-        query = select(User).where(User.id == email)
+        query = select(User).where(User.email == email)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
