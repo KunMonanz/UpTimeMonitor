@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import EmailStr
 
 from app.config.security_config import (
     dummy_hash_password, 
@@ -44,3 +45,14 @@ async def get_user_by_id_route(user_id: UUID):
             status_code=status.HTTP_404_NOT_FOUND
         )
     return user_exists
+
+@router.get("/{email}", response_model=UserResponse)
+async def get_user_by_username_route(email: EmailStr):
+    user_exists = await user_repo.get_user_by_email(email)
+    if not user_exists:
+        raise HTTPException(
+            detail="User not found",
+            status_code=status.HTTP_404_NOT_FOUND
+        )
+    return user_exists
+
