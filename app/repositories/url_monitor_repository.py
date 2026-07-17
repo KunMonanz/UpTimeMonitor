@@ -43,6 +43,15 @@ class URLMonitorRepository:
             return url_monitor
         return None
 
+    async def update_url(self, url_id: UUID, url: HttpUrl):
+        url_monitor = await self.get_url_by_id(url_id)
+        if url_monitor:
+            url_monitor.url = str(url)
+            await self.db.commit()
+            await self.db.refresh(url_monitor)
+            return url_monitor
+        return None
+    
     async def delete_url(self, url_id: UUID):
         """Delete a specific URLMonitor entry by its ID."""
         url_monitor = await self.get_url_by_id(url_id)

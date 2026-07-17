@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.config.database_config import get_db
 from app.repositories.url_monitor_repository import URLMonitorRepository
 from app.schemas.monitor_url_schemas import (
+    MonitorUrlBase,
     MonitorUrlCreate, 
     MonitorUrlResponse, 
     MonitorUrlUpdate
@@ -51,3 +52,18 @@ async def get_monitor_url(url_id: UUID):
     
     logger.info(f"SUCCESS: Retrieved URL monitor entry with ID: {url_id}")
     return url_monitor
+
+@router.patch("/{url_id}", response_model=MonitorUrlResponse)
+async def update_monitor_url(url_id: UUID, payload: MonitorUrlBase):
+    logger.info(f"INFO: Attempting to update URL monitor entry with ID: {url_id}")
+    
+    url_monitor_exists = await url_monitor_repo.update_url(
+                                url_id=url_id, 
+                                url=payload.url
+                            )
+    if not url_monitor_exists:
+        logger.exception(f"EXCEPTION: Could not find URL monitor entry with ID: {url_id}")
+        raise HTTPException(status_code=404, detail="URL monitor not found")
+    
+    logger.info(f"SUCCESS: Updated URL monitor entry with ID: {url_id}")
+    return url_monitor_exists
