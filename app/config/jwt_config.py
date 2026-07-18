@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from app.config.settings import JWT_SECRET_KEY
+from app.models.users import User
 from app.repositories.user_repository import UserRepository
 
 ALGORITHM="HS256"
@@ -40,3 +41,5 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     if user is None:
         raise credential_exception
     return user
+
+CurrentUser = Annotated[User, Depends(get_current_user)]

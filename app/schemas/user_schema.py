@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, ConfigDict
 
@@ -20,3 +21,8 @@ class UserResponse(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+class UserLogin(BaseModel):
+    username_or_email: str | EmailStr
+    password: str

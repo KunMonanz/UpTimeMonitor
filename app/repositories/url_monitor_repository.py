@@ -21,9 +21,9 @@ class URLMonitorRepository:
         await self.db.refresh(url_monitor)
         return url_monitor
 
-    async def get_all_urls(self):
+    async def get_all_urls(self, user_id: UUID):
         """Retrieve all URLMonitor entries from the database."""
-        query = select(URLMonitor)
+        query = select(URLMonitor).where(URLMonitor.owner_id == user_id)
         result = await self.db.execute(query)
         return result.scalars().all()
 
