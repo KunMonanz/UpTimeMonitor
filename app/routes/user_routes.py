@@ -38,21 +38,21 @@ async def create_user_route(payload: UserCreate):
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user_by_id_route(user_id: UUID):
-    user_exists = await user_repo.get_user_by_id(user_id)
-    if not user_exists:
+    user = await user_repo.get_user_by_id(user_id)
+    if user is None:
         raise HTTPException(
             detail="User not found",
             status_code=status.HTTP_404_NOT_FOUND
         )
-    return user_exists
+    return user
 
 @router.get("/{username}", response_model=UserResponse)
 async def get_user_by_username_route(username: str):
-    user_exists = await user_repo.get_user_by_username(username)
-    if not user_exists:
+    user = await user_repo.get_user_by_username(username)
+    if user is None:
         raise HTTPException(
             detail="User not found",
             status_code=status.HTTP_404_NOT_FOUND
         )
-    return user_exists
+    return user
 

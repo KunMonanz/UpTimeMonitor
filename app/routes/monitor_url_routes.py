@@ -46,7 +46,7 @@ async def get_monitor_url(url_id: UUID):
     logger.info(f"INFO: Attempting to retrieve URL monitor entry with ID: {url_id}")
     
     url_monitor = await url_monitor_repo.get_url_by_id(url_id)
-    if not url_monitor:
+    if url_monitor is None:
         logger.exception(f"EXCEPTION: Could not find URL monitor entry with ID: {url_id}")
         raise HTTPException(status_code=404, detail="URL monitor not found")
     
@@ -58,13 +58,13 @@ async def update_monitor_url(url_id: UUID, payload: MonitorUrlBase):
     """Update a specific URL monitor entry by its ID."""
     logger.info(f"INFO: Attempting to update URL monitor entry with ID: {url_id}")
     
-    url_monitor_exists = await url_monitor_repo.update_url(
+    url_monitor = await url_monitor_repo.update_url(
                                 url_id=url_id, 
                                 url=payload.url
                             )
-    if not url_monitor_exists:
+    if url_monitor is None:
         logger.exception(f"EXCEPTION: Could not find URL monitor entry with ID: {url_id}")
         raise HTTPException(status_code=404, detail="URL monitor not found")
     
     logger.info(f"SUCCESS: Updated URL monitor entry with ID: {url_id}")
-    return url_monitor_exists
+    return url_monitor
