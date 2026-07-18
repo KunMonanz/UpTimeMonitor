@@ -13,9 +13,9 @@ class URLMonitorRepository:
     def __init__(self):
         self.db = SessionLocal()
 
-    async def add_url(self, url: HttpUrl) -> URLMonitor:
+    async def add_url(self, url: HttpUrl, owner_id: UUID) -> URLMonitor:
         """Add a new URLMonitor entry to the database."""
-        url_monitor = URLMonitor(url=str(url))
+        url_monitor = URLMonitor(url=str(url), owner_id=owner_id)
         self.db.add(url_monitor)
         await self.db.commit()
         await self.db.refresh(url_monitor)

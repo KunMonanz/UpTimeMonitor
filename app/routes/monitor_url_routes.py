@@ -11,7 +11,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.config.database_config import get_db
-from app.config.jwt_config import CurrentUser
+from app.dependencies import CurrentUser, VerifyURLMonitorOwnership
 from app.repositories.url_monitor_repository import URLMonitorRepository
 from app.schemas.monitor_url_schemas import (
     MonitorUrlBase,
@@ -29,7 +29,7 @@ async def create_monitor_url(payload: MonitorUrlCreate, current_user: CurrentUse
     """Create a new URL monitor entry."""
     logger.info("INFO: Attempting to create a new URL monitor entry")
     
-    new_url_monitor = await url_monitor_repo.add_url(payload.url)
+    new_url_monitor = await url_monitor_repo.add_url(payload.url, owner_id=current_user.id)
     logger.info(f"SUCCESS: Created new URL monitor entry with ID: {new_url_monitor.id}")
     return new_url_monitor
 
@@ -45,49 +45,23 @@ async def get_all_monitor_urls(current_user: CurrentUser):
 
 
 @router.get("/{url_id}", response_model=MonitorUrlResponse)
-async def get_monitor_url(url_id: UUID, current_user: CurrentUser):
+async def get_monitor_url(url_monitor: VerifyURLMonitorOwnership):
     """Retrieve a specific URL monitor entry by its ID."""
-    logger.info(f"INFO: Attempting to retrieve URL monitor entry with ID: {url_id}")
     
-    url_monitor = await url_monitor_repo.get_url_by_id(url_id)
-
-    if url_monitor is None:
-        logger.exception(f"EXCEPTION: Could not find URL monitor entry with ID: {url_id}")
-        raise HTTPException(status_code=404, detail="URL monitor not found")
-    
-    if url_monitor.owner_id != current_user.id:
-        logger.exception(f"SECURITY: User {current_user.id} tried to view User {url_monitor.owner_id} URL monitor {url_id}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized to view this URL Monitor"
-        )
-        
-    logger.info(f"SUCCESS: Retrieved URL monitor entry with ID: {url_id}")
     return url_monitor
 
 
 @router.patch("/{url_id}", response_model=MonitorUrlResponse)
-async def update_monitor_url(url_id: UUID, payload: MonitorUrlBase, current_user: CurrentUser):
+async def update_monitor_url(
+    payload: MonitorUrlUpdate, 
+    url_monitor: VerifyURLMonitorOwnership
+):
     """Update a specific URL monitor entry by its ID."""
-    logger.info(f"INFO: Attempting to update URL monitor entry with ID: {url_id}")
     
-    url_monitor = await url_monitor_repo.get_url_by_id(url_id=url_id)
-    if not url_monitor:
-        logger.exception(f"EXCEPTION: Could not find URL monitor entry with ID: {url_id}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="URL monitor not found"
-        )
-    if url_monitor.owner_id != current_user.id:
-        logger.exception(f"SECURITY: User {current_user.id} tried to edit User {url_monitor.owner_id} URL monitor {url_id}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized to edit this URL Monitor"
-        )
-    await url_monitor_repo.update_url(
-        url_id=url_monitor.id, 
-        url=payload.url
-    )
+    url_monitor = await url_monitor_repo.update_url(
+                    url_id=url_monitor.id, 
+                    url=payload.url
+                ) # type: ignore
 
-    logger.info(f"SUCCESS: Updated URL monitor entry with ID: {url_id}")
+    logger.info(f"SUCCESS: Updated URL monitor entry with ID: {url_monitor.id}")
     return url_monitor
