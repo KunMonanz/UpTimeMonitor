@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URL Down Alert</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f5f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+
+  <!-- Preheader (hidden preview text) -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
+    {{ url }} is currently unreachable — detected at {{ detected_at }}.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7; padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+
+          <!-- Header / Status banner -->
+          <tr>
+            <td style="background-color:#dc2626; padding:24px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background-color:#ffffff; margin-right:10px; vertical-align:middle;"></span>
+                    <span style="color:#ffffff; font-size:14px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; vertical-align:middle;">
+                      Service Down
+                    </span>
+                  </td>
+                  <td align="right" style="color:#fecaca; font-size:13px;">
+                    {{ detected_at }}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+              <h1 style="margin:0 0 8px 0; font-size:20px; color:#111827;">
+                {{ monitor_name }} is unreachable
+              </h1>
+              <p style="margin:0 0 24px 0; font-size:14px; color:#6b7280; line-height:1.6;">
+                We detected that your monitored URL stopped responding as expected. Here are the details from the latest check.
+              </p>
+
+              <!-- Details card -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:24px;">
+                <tr>
+                  <td style="padding:16px 20px; border-bottom:1px solid #e5e7eb;">
+                    <span style="display:block; font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">URL</span>
+                    <span style="font-size:14px; color:#111827; font-weight:500; word-break:break-all;">{{ url }}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 20px; border-bottom:1px solid #e5e7eb;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="50%" style="vertical-align:top;">
+                          <span style="display:block; font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Status Code</span>
+                          <span style="font-size:14px; color:#dc2626; font-weight:600;">{{ status_code }}</span>
+                        </td>
+                        <td width="50%" style="vertical-align:top;">
+                          <span style="display:block; font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Response Time</span>
+                          <span style="font-size:14px; color:#111827; font-weight:500;">{{ response_time }}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <span style="display:block; font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Error</span>
+                    <span style="font-size:14px; color:#111827;">{{ error_message }}</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA -->
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+                <tr>
+                  <td style="border-radius:8px; background-color:#111827;">
+                    <a href="{{ dashboard_link }}" target="_blank" style="display:inline-block; padding:12px 24px; font-size:14px; font-weight:600; color:#ffffff; text-decoration:none; border-radius:8px;">
+                      View on Dashboard
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:16px 0 0 0; font-size:13px; color:#9ca3af; line-height:1.5;">
+                We'll notify you again if this URL comes back online, or if it remains down after the next scheduled check.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px; background-color:#f9fafb; border-top:1px solid #e5e7eb;">
+              <p style="margin:0; font-size:12px; color:#9ca3af; text-align:center; line-height:1.6;">
+                You're receiving this because you monitor <strong>{{ url }}</strong>.<br>
+                <a href="{{ manage_alerts_link }}" style="color:#6b7280; text-decoration:underline;">Manage alert settings</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

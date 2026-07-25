@@ -39,7 +39,7 @@ async def get_all_monitor_urls(current_user: CurrentUser):
     """Retrieve all URL monitor entries."""
     logger.info("INFO: Attempting to reurn all URL monitor entries")
     
-    url_monitors = await url_monitor_repo.get_all_urls(current_user.id)
+    url_monitors = await url_monitor_repo.get_all_user_urls(current_user.id)
     logger.info("SUCCESS: Returned all URL monitor entries")
     return url_monitors
 
