@@ -24,5 +24,5 @@ mail_config = ConnectionConfig(
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=True,
-    TEMPLATE_FOLDER=Path(__file__).parent / "app/templates/emails"
+    TEMPLATE_FOLDER = Path(__file__).resolve().parent.parent / "templates" / "emails"
 )

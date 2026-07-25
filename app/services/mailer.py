@@ -3,7 +3,7 @@ import os
 
 from fastapi_mail import FastMail, MessageSchema, MessageType
 
-from config.email_config import mail_config
+from app.config.email_config import mail_config
 
 class EmailEngine(abc.ABC):
     @abc.abstractmethod
@@ -17,7 +17,11 @@ class EmailEngine(abc.ABC):
 
 class SMTPEngine(EmailEngine):
     async def send_email(
-        self, to_email: str | list[str], subject: str, body: dict, template_name: str
+        self, 
+        to_email: str | list[str], 
+        subject: str, 
+        body: dict, 
+        template_name: str
     ) -> None:
         recipients = [to_email] if isinstance(to_email, str) else to_email
         message = MessageSchema(

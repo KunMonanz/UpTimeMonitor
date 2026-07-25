@@ -18,7 +18,6 @@ class URLMonitor(Base):
     url: Mapped[str] = mapped_column(String(255), nullable=False)
     is_up: Mapped[bool] = mapped_column(Boolean, default=False)
     consecutive_failures: Mapped[int] = mapped_column(default=0)
-
     last_checked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

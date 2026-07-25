@@ -1,6 +1,6 @@
 import logging
 from .celery_worker import celery_app
-from services.mailer import get_email_client
+from app.services.mailer import get_email_client
 
 logger = logging.getLogger(__name__)
 

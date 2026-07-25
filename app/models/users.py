@@ -1,5 +1,5 @@
 from uuid import UUID
-from sqlalchemy import Uuid
+from sqlalchemy import Boolean, Uuid
 from uuid6 import uuid7
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -14,6 +14,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(unique=True, nullable=False)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(nullable=False)
+    is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     
     url_monitors: Mapped[list["URLMonitor"]] = relationship( # type: ignore
         back_populates="owner", 
