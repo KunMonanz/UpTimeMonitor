@@ -81,16 +81,22 @@ async def login_for_access_token(
             detail="Account details wrong",
             status_code=status.HTTP_409_CONFLICT
         )
-    if user.is_email_verified: 
-        access_token = await create_access_token({"sub": user.username})
-        return Token(access_token=access_token, token_type="bearer")
-    token_service = TokenService(prefix="email_verify")
-    await send_verification(
-        user_id=str(user.id), 
-        name=user.username, 
-        email=user.email, 
-        token_service=token_service
-    )
+
+    if not user.is_email_verified:
+        token_service = TokenService(prefix="email_verify")
+        await send_verification(
+            user_id=str(user.id), 
+            name=user.username, 
+            email=user.email, 
+            token_service=token_service
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified. A new verification link has been sent to your email."
+        )
+
+    access_token = await create_access_token({"sub": user.username})
+    return Token(access_token=access_token, token_type="bearer")
         
 
 @router.get("/verify-email")

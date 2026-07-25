@@ -19,10 +19,10 @@ mail_config = ConnectionConfig(
     MAIL_USERNAME=MAIL_USERNAME,
     MAIL_PASSWORD=SecretStr(MAIL_PASSWORD),
     MAIL_FROM=MAIL_USERNAME,
-    MAIL_PORT=587,
+    MAIL_PORT=465,
     MAIL_SERVER=MAIL_SERVER,
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
+    MAIL_STARTTLS=False,
+    MAIL_SSL_TLS=True,
     USE_CREDENTIALS=True,
     TEMPLATE_FOLDER = Path(__file__).resolve().parent.parent / "templates" / "emails"
 )
