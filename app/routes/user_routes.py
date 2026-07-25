@@ -16,7 +16,8 @@ from app.schemas.user_schema import (
     Token, 
     UserCreate, 
     UserLogin, 
-    UserResponse
+    UserResponse,
+    UserUsernameUpdate
 )
 from app.utils.email_utils import is_email
 
@@ -89,3 +90,7 @@ async def get_user_by_username_route(username: str, current_user: CurrentUser):
         )
     return user
 
+
+@router.patch("/{username}", response_model=UserResponse)
+async def edit_username_route(payload: UserUsernameUpdate):
+    pass

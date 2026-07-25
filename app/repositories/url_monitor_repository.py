@@ -2,6 +2,7 @@ from uuid import UUID
 
 from pydantic import HttpUrl
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.models.url_monitor import URLMonitor
 from app.config.database_config import SessionLocal
@@ -23,7 +24,9 @@ class URLMonitorRepository:
 
     async def get_all_urls(self, user_id: UUID):
         """Retrieve all URLMonitor entries from the database."""
-        query = select(URLMonitor).where(URLMonitor.owner_id == user_id)
+        query = select(URLMonitor)\
+            .where(URLMonitor.owner_id == user_id)\
+                .options(selectinload(URLMonitor.owner))
         result = await self.db.execute(query)
         return result.scalars().all()
 

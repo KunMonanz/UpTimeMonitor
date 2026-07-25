@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.config.database_config import Base
 
 
-
 class User(Base):
     __tablename__ = "users"
     
@@ -16,7 +15,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(nullable=False)
     
-    url_monitors: Mapped[list["URLMonitor"]] = relationship(
+    url_monitors: Mapped[list["URLMonitor"]] = relationship( # type: ignore
         back_populates="owner", 
         cascade="all, delete-orphan"
     )

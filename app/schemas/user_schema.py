@@ -5,10 +5,11 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 
 class UserBase(BaseModel):
     username: str
-    email: EmailStr
+
 
 
 class UserCreate(UserBase):
+    email: EmailStr
     password: str
 
 
@@ -25,4 +26,8 @@ class Token(BaseModel):
 
 class UserLogin(BaseModel):
     username_or_email: str | EmailStr
+    password: str
+
+
+class UserUsernameUpdate(UserBase):
     password: str

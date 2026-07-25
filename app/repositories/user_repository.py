@@ -39,7 +39,6 @@ class UserRepository:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
     
-    
     async def get_user_by_id(self, user_id) -> User | None:
         """Retrieve a user by their di."""
         
@@ -53,3 +52,6 @@ class UserRepository:
         query = select(User).where(User.email == email)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+    
+    async def edit_username(self):
+        pass
