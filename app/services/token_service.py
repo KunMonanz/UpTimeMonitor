@@ -31,4 +31,6 @@ class TokenService:
             return None
         if consume:
             await self.redis.delete(key)
+        if isinstance(identifier, bytes):
+            identifier = identifier.decode()
         return identifier

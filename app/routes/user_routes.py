@@ -1,4 +1,5 @@
 from uuid import UUID
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio.session import AsyncSession
@@ -110,6 +111,7 @@ async def verify_email(request: Request, token: str, db: AsyncSession = Depends(
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
     try:
+        user_id = uuid.UUID(user_id)
         user = await user_repo.get_user_by_id(user_id)
     except UserDoesNotExist:
         raise HTTPException(status_code=404, detail="User not found")
