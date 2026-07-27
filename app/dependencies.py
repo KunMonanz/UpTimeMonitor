@@ -6,10 +6,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from app.config.database_config import get_db
+from app.config.database_config import SessionLocal
 from app.config.jwt_config import ALGORITHM
 from app.config.settings import JWT_SECRET_KEY
 from app.models.url_monitor import URLMonitor
@@ -21,11 +18,24 @@ user_repo = UserRepository()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 logger = logging.getLogger(__name__)
 
+
+async def get_db():
+    async with SessionLocal() as session:
+        yield session
+
+
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     credential_exception = HTTPException(
         detail="Could not validate credentials",
         status_code=status.HTTP_401_UNAUTHORIZED
     )
+    
+    if not JWT_SECRET_KEY:
+        raise ValueError("JWT_SECRET_KEY not configured in settings")
+    
+    if not ALGORITHM:
+            raise ValueError("ALGORITHM not configured in settings")
+        
     try:
        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
        username: str | None = payload.get("sub")
@@ -66,3 +76,4 @@ VerifyURLMonitorOwnership = Annotated[
                                 URLMonitor, 
                                 Depends(verify_url_monitor_ownership)
                             ]
+

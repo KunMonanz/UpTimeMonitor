@@ -8,13 +8,9 @@ from fastapi import (
     status
 )
 
-from sqlalchemy.orm import Session
-
-from app.config.database_config import get_db
 from app.dependencies import CurrentUser, VerifyURLMonitorOwnership
 from app.repositories.url_monitor_repository import URLMonitorRepository
 from app.schemas.monitor_url_schemas import (
-    MonitorUrlBase,
     MonitorUrlCreate, 
     MonitorUrlResponse, 
     MonitorUrlUpdate

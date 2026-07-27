@@ -1,7 +1,6 @@
 from uuid import UUID
-from pydantic import EmailStr
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.config.jwt_config import create_access_token
@@ -11,7 +10,6 @@ from app.config.security_config import (
     verify_password
 )
 from app.dependencies import CurrentUser, get_db
-from app.repositories.url_monitor_repository import URLMonitorRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.error import UserDoesNotExist
 from app.schemas.user_schema import (
@@ -23,6 +21,7 @@ from app.schemas.user_schema import (
 )
 from app.services.token_service import TokenService
 from app.utils.email_utils import is_email, send_verification
+from app.config.limiter import limiter
 
 router = APIRouter(prefix="/api/v1/users", tags=["User and Authentication"])
 
@@ -30,7 +29,8 @@ user_repo = UserRepository()
 
 
 @router.post("/", response_model=UserResponse)
-async def create_user_route(payload: UserCreate):
+@limiter.limit("3/hour")
+async def create_user_route(request: Request, payload: UserCreate):
     try:
         await user_repo.get_user_by_username(payload.username)
         username_exists = True
@@ -60,7 +60,9 @@ async def create_user_route(payload: UserCreate):
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("10/minute")
 async def login_for_access_token(
+    request: Request,
     payload: UserLogin
 ):
     try:
@@ -100,7 +102,8 @@ async def login_for_access_token(
         
 
 @router.get("/verify-email")
-async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("20/minute")
+async def verify_email(request: Request, token: str, db: AsyncSession = Depends(get_db)):
     token_service = TokenService(prefix="email_verify")
     user_id = await token_service.verify_token(token, consume=True)
     if user_id is None:
