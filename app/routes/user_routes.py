@@ -1,16 +1,19 @@
 from uuid import UUID
 import uuid
 
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
+from app.services.redis_client import redis_client
 from app.config.jwt_config import create_access_token
 from app.config.security_config import (
     dummy_hash_password, 
     hash_password, 
     verify_password
 )
-from app.dependencies import CurrentUser, get_db
+from app.dependencies import CurrentUser, get_db, security
 from app.repositories.user_repository import UserRepository
 from app.repositories.error import UserDoesNotExist
 from app.schemas.user_schema import (
@@ -20,7 +23,7 @@ from app.schemas.user_schema import (
     UserResponse,
     UserUsernameUpdate
 )
-from app.services.token_service import TokenService
+from app.services.token_service import JWTTokenService, TokenService
 from app.utils.email_utils import is_email, send_verification
 from app.config.limiter import limiter
 
@@ -97,10 +100,22 @@ async def login_for_access_token(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Email not verified. A new verification link has been sent to your email."
         )
-
+    
     access_token = await create_access_token({"sub": user.username})
     return Token(access_token=access_token, token_type="bearer")
-        
+
+
+@router.post("/logout")
+@limiter.limit("2/minute")
+async def logout(
+    request: Request, 
+    current_user: CurrentUser, 
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+    jwt_service = JWTTokenService(redis=redis_client)
+    jwt_service.blacklist(token=token, identifier=str(current_user.id))
+
 
 @router.get("/verify-email")
 @limiter.limit("20/minute")

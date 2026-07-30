@@ -1,5 +1,6 @@
 import secrets
 from datetime import timedelta
+from app.services.error import BlacklistedTokenError
 from app.services.redis_client import redis_client
 from app.config.settings import TOKEN_TTL_SECONDS
 
@@ -34,3 +35,23 @@ class TokenService:
         if isinstance(identifier, bytes):
             identifier = identifier.decode()
         return identifier
+    
+
+
+class JWTTokenService:
+    def __init__(self, redis=redis_client, prefix: str = "jwt"):
+            self.redis = redis
+            self.prefix = prefix
+    
+    def _key(self, token: str) -> str:
+            return f"{self.prefix}:{token}"
+     
+    async def blacklist(self, token, identifier, ttl= 15 * 60):
+        await self.redis.set(self._key(token), identifier, ex=ttl)
+        
+    async def verify_jwt(self, token):
+        key = self._key(token)
+        jwt = await self.redis.get(key)
+        if jwt:
+            raise BlacklistedTokenError("Token has been blacklisted")
+        

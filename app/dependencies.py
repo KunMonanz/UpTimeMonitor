@@ -3,8 +3,11 @@ import logging
 from uuid import UUID
 from typing import Annotated
 
+from app.services.error import BlacklistedTokenError
+from app.services.redis_client import redis_client
+from app.services.token_service import JWTTokenService
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 
 from app.config.database_config import SessionLocal
 from app.config.jwt_config import ALGORITHM
@@ -17,7 +20,7 @@ from app.repositories.user_repository import UserRepository
 user_repo = UserRepository()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 logger = logging.getLogger(__name__)
-
+security = HTTPBearer()
 
 async def get_db():
     async with SessionLocal() as session:
@@ -35,6 +38,15 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     
     if not ALGORITHM:
             raise ValueError("ALGORITHM not configured in settings")
+    jwt_service = JWTTokenService(redis=redis_client)
+    
+    try:
+        await jwt_service.verify_jwt(token)
+    except BlacklistedTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is blacklisted",
+        )
         
     try:
        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
@@ -76,4 +88,5 @@ VerifyURLMonitorOwnership = Annotated[
                                 URLMonitor, 
                                 Depends(verify_url_monitor_ownership)
                             ]
+
 
