@@ -120,5 +120,3 @@ pytest -q
 - The default monitoring cadence is configured in the Celery tasks (typically every 5 minutes). See `app/tasks/monitor_tasks.py` for scheduling and behaviour.
 - Email templates are in `app/templates/emails`.
 - Use the `secrets_generator.py` helper to create strong secrets for `JWT_SECRET_KEY`.
-
-If you'd like, I can also run the tests or create a short CONTRIBUTING section next.
