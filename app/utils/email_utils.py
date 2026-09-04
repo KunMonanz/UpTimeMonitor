@@ -1,6 +1,6 @@
 from email_validator import EmailNotValidError, validate_email
 
-from app.config.settings import FRONTEND_URL
+from app.config.settings import BACKEND_URL, FRONTEND_URL
 from app.services.token_service import TokenService
 from app.tasks.email_tasks import send_async_email_task
 
@@ -17,8 +17,7 @@ async def send_verification(
     user_id: str, email: str, name: str, token_service: TokenService
 ):
     token = await token_service.generate_token(identifier=user_id, ttl=1800)
-    verify_link = f"https://{FRONTEND_URL}/verify-email?token={token}"
-
+    verify_link = f"https://{BACKEND_URL}/api/v1/users/verify-email?token={token}"
     send_async_email_task.delay(  # type: ignore
         to_email=email,
         subject="Verify your email",
