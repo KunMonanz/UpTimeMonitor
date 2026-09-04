@@ -1,9 +1,9 @@
 from datetime import datetime
 from uuid import UUID
-from uuid6 import uuid7
 
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import DateTime, ForeignKey, String, Integer, Boolean, Uuid
+from uuid6 import uuid7
 
 from app.config.database_config import Base
 from app.models.users import User
@@ -11,6 +11,7 @@ from app.models.users import User
 
 class URLMonitor(Base):
     """Model for monitoring URLs."""
+
     __tablename__ = "url_monitor"
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
