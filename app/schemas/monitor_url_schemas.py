@@ -1,4 +1,5 @@
 from uuid import UUID
+
 from pydantic import BaseModel, HttpUrl
 
 
@@ -16,7 +17,7 @@ class MonitorUrlUpdate(MonitorUrlBase):
 
 class MonitorUrlResponse(MonitorUrlBase):
     id: UUID
-    status: bool
+    is_up: bool
 
     class Config:
         from_attributes = True
