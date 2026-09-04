@@ -1,11 +1,13 @@
 import secrets
 from datetime import timedelta
+
+from app.config.settings import TOKEN_TTL_SECONDS
 from app.services.error import BlacklistedTokenError
 from app.services.redis_client import redis_client
-from app.config.settings import TOKEN_TTL_SECONDS
 
 if not TOKEN_TTL_SECONDS:
     raise ValueError("TOKEN_TTL_SECOND is missing from settings")
+
 
 class TokenService:
     def __init__(self, redis=redis_client, prefix: str = "verify_token"):
@@ -15,7 +17,9 @@ class TokenService:
     def _key(self, token: str) -> str:
         return f"{self.prefix}:{token}"
 
-    async def generate_token(self, identifier: str, ttl: int = TOKEN_TTL_SECONDS) -> str:
+    async def generate_token(
+        self, identifier: str, ttl: int = TOKEN_TTL_SECONDS
+    ) -> str:
         """Creates a token and maps it to an identifier (e.g. user_id or email)."""
         token = secrets.token_urlsafe(32)
         await self.redis.set(self._key(token), identifier, ex=ttl)
@@ -35,23 +39,21 @@ class TokenService:
         if isinstance(identifier, bytes):
             identifier = identifier.decode()
         return identifier
-    
 
 
 class JWTTokenService:
     def __init__(self, redis=redis_client, prefix: str = "jwt"):
-            self.redis = redis
-            self.prefix = prefix
-    
+        self.redis = redis
+        self.prefix = prefix
+
     def _key(self, token: str) -> str:
-            return f"{self.prefix}:{token}"
-     
-    async def blacklist(self, token, identifier, ttl= 15 * 60):
+        return f"{self.prefix}:{token}"
+
+    async def blacklist(self, token, identifier, ttl=15 * 60):
         await self.redis.set(self._key(token), identifier, ex=ttl)
-        
+
     async def verify_jwt(self, token):
         key = self._key(token)
         jwt = await self.redis.get(key)
         if jwt:
             raise BlacklistedTokenError("Token has been blacklisted")
-        

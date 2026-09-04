@@ -8,3 +8,5 @@ __pycache__/
 *.dir
 .gitignore
 *.code-workspace
+tests/
+.zed/
