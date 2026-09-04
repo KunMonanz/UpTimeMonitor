@@ -76,7 +76,7 @@ async def login_for_access_token(request: Request, payload: UserLogin):
     is_correct_password = await verify_password(payload.password, user.hashed_password)
     if not is_correct_password:
         raise HTTPException(
-            detail="Account details wrong", status_code=status.HTTP_409_CONFLICT
+            detail="Account details wrong", status_code=status.HTTP_401_UNAUTHORIZED
         )
 
     if not user.is_email_verified:
