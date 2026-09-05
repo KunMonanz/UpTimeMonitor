@@ -10,7 +10,11 @@ from app.dependencies import (
     get_url_monitor_repo,
 )
 from app.repositories.url_monitor_repository import URLMonitorRepository
-from app.routes.cache_keys import get_monitor_cache_key, get_monitor_lists_cache_key
+from app.routes.cache_keys import (
+    get_monitor_cache_key,
+    get_monitor_lists_cache_key,
+    invalidate_monitor_caches,
+)
 from app.schemas.monitor_url_schemas import (
     MonitorUrlCreate,
     MonitorUrlResponse,
@@ -44,10 +48,10 @@ async def get_all_monitor_urls(
     url_monitor_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
 ):
     """Retrieve all URL monitor entries."""
-    logger.info("INFO: Attempting to reurn all URL monitor entries")
+    logger.info("INFO: Attempting to return all URL monitor entries")
 
     cache_key = await get_monitor_lists_cache_key(current_user.id)
-    cached_data = redis_client.get(cache_key)
+    cached_data = await redis_client.get(cache_key)
 
     if cached_data:
         logger.info("SUCCESS: Returned all URL monitor entries")
@@ -56,9 +60,10 @@ async def get_all_monitor_urls(
     url_monitors = await url_monitor_repo.get_all_user_urls(current_user.id)
 
     ta = TypeAdapter(list[MonitorUrlResponse])
-    json_data = ta.dump_json(url_monitors)
+    response_data = ta.validate_python(url_monitors, from_attributes=True)
+    json_data = ta.dump_json(response_data)
 
-    redis_client.set(cache_key, json_data, ex=180)
+    await redis_client.set(cache_key, json_data, ex=180)
 
     logger.info("SUCCESS: Returned all URL monitor entries")
     return url_monitors
@@ -68,16 +73,17 @@ async def get_all_monitor_urls(
 async def get_monitor_url(url_monitor: VerifyURLMonitorOwnership):
     """Retrieve a specific URL monitor entry by its ID."""
     cache_key = await get_monitor_cache_key(url_monitor.owner_id, url_monitor.id)
-    cached_data = redis_client.get(cache_key)
+    cached_data = await redis_client.get(cache_key)
 
     if cached_data:
         logger.info("SUCCESS: Returned all URL monitor entries")
         return Response(content=cached_data, media_type="application/json")
 
     ta = TypeAdapter(MonitorUrlResponse)
-    json_data = ta.dump_json(url_monitor)
+    response_data = ta.validate_python(url_monitor, from_attributes=True)
+    json_data = ta.dump_json(response_data)
 
-    redis_client.set(cache_key, json_data, ex=180)
+    await redis_client.set(cache_key, json_data, ex=180)
     logger.info("SUCCESS: Returned all URL monitor entries")
 
     return url_monitor
@@ -105,4 +111,5 @@ async def delete_monitor_url(
     url_monitor_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
 ):
     await url_monitor_repo.delete_url(url_monitor.id)
+    await invalidate_monitor_caches(url_monitor.owner_id, url_monitor.id)
     return Response({}, status_code=status.HTTP_204_NO_CONTENT)

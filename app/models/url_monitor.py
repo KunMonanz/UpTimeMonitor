@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Uuid
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
@@ -24,5 +24,5 @@ class URLMonitor(Base):
     )
     last_status_code: Mapped[int | None] = mapped_column(nullable=True)
 
-    owner: Mapped["User"] = relationship(back_populates="url_monitors")
+    owner: Mapped["User"] = relationship(back_populates="url_monitors", lazy="selectin")
     owner_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)

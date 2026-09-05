@@ -44,7 +44,11 @@ class URLMonitorRepository:
 
     async def get_url_by_id(self, url_id: UUID):
         """Retrieve a specific URLMonitor entry by its ID."""
-        query = select(URLMonitor).where(URLMonitor.id == url_id)
+        query = (
+            select(URLMonitor)
+            .where(URLMonitor.id == url_id)
+            .options(selectinload(URLMonitor.owner))
+        )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
