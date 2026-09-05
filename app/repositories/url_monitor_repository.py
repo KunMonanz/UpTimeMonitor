@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import HttpUrl
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config.database_config import SessionLocal
@@ -14,7 +15,7 @@ from app.models.url_monitor import URLMonitor
 class URLMonitorRepository:
     """Repository for URLMonitor model."""
 
-    def __init__(self):
+    def __init__(self, db: AsyncSession):
         self.db = SessionLocal()
 
     async def add_url(self, url: HttpUrl, owner_id: UUID) -> URLMonitor:

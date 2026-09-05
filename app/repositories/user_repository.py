@@ -1,5 +1,6 @@
 from pydantic import EmailStr
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.config.database_config import SessionLocal
@@ -10,7 +11,7 @@ from app.models.users import User
 class UserRepository:
     """Repository for URLMonitor model."""
 
-    def __init__(self):
+    def __init__(self, db: AsyncSession):
         self.db = SessionLocal()
 
     async def create_user(

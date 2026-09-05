@@ -1,4 +1,5 @@
 import uuid
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -12,7 +13,7 @@ from app.config.security_config import (
     hash_password,
     verify_password,
 )
-from app.dependencies import CurrentUser, get_db, security
+from app.dependencies import CurrentUser, get_db, get_user_repo, security
 from app.errors.user_errors import UserDoesNotExist
 from app.repositories.user_repository import UserRepository
 from app.schemas.user_schema import (
@@ -28,12 +29,14 @@ from app.utils.email_utils import is_email, send_verification
 
 router = APIRouter(prefix="/api/v1/users", tags=["User and Authentication"])
 
-user_repo = UserRepository()
-
 
 @router.post("/", response_model=UserResponse)
 @limiter.limit("3/hour")
-async def create_user_route(request: Request, payload: UserCreate):
+async def create_user_route(
+    request: Request,
+    payload: UserCreate,
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
+):
     try:
         await user_repo.get_user_by_username(payload.username)
         username_exists = True
@@ -61,7 +64,11 @@ async def create_user_route(request: Request, payload: UserCreate):
 
 @router.post("/login", response_model=Token)
 @limiter.limit("10/minute")
-async def login_for_access_token(request: Request, payload: UserLogin):
+async def login_for_access_token(
+    request: Request,
+    payload: UserLogin,
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
+):
     try:
         if await is_email(payload.username_or_email):
             user = await user_repo.get_user_by_email(payload.username_or_email)
@@ -111,7 +118,10 @@ async def logout(
 @router.get("/verify-email")
 @limiter.limit("20/minute")
 async def verify_email(
-    request: Request, token: str, db: AsyncSession = Depends(get_db)
+    request: Request,
+    token: str,
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
+    db: AsyncSession = Depends(get_db),
 ):
     token_service = TokenService(prefix="email_verify")
     user_id = await token_service.verify_token(token, consume=True)
@@ -130,7 +140,11 @@ async def verify_email(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_user_by_id_route(user_id: UUID, current_user: CurrentUser):
+async def get_user_by_id_route(
+    user_id: UUID,
+    current_user: CurrentUser,
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
+):
     try:
         return await user_repo.get_user_by_id(user_id)
     except UserDoesNotExist:
@@ -140,7 +154,11 @@ async def get_user_by_id_route(user_id: UUID, current_user: CurrentUser):
 
 
 @router.get("/{username}", response_model=UserResponse)
-async def get_user_by_username_route(username: str, current_user: CurrentUser):
+async def get_user_by_username_route(
+    username: str,
+    current_user: CurrentUser,
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
+):
     try:
         return await user_repo.get_user_by_username(username)
     except UserDoesNotExist:

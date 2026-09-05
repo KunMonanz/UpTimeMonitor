@@ -8,6 +8,7 @@ from fastapi.security import (
     HTTPBearer,
     OAuth2PasswordBearer,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database_config import SessionLocal
 from app.config.jwt_config import ALGORITHM
@@ -21,7 +22,6 @@ from app.services.error import BlacklistedTokenError
 from app.services.redis_client import redis_client
 from app.services.token_service import JWTTokenService
 
-user_repo = UserRepository()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
@@ -32,7 +32,18 @@ async def get_db():
         yield session
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+def get_url_monitor_repo(db: AsyncSession = Depends(get_db)) -> URLMonitorRepository:
+    return URLMonitorRepository(db)
+
+
+def get_user_repo(db: AsyncSession = Depends(get_db)) -> UserRepository:
+    return UserRepository(db)
+
+
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
+):
     credential_exception = HTTPException(
         detail="Could not validate credentials",
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -70,7 +81,9 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 async def verify_url_monitor_ownership(
-    url_id: UUID, current_user: CurrentUser, url_repo: URLMonitorRepository = Depends()
+    url_id: UUID,
+    current_user: CurrentUser,
+    url_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
 ):
     logger.info(f"INFO: Attempting to retrieve URL monitor entry with ID: {url_id}")
 

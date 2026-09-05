@@ -1,12 +1,9 @@
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
 
 import jwt
 
 from app.config.settings import JWT_SECRET_KEY
 from app.errors.environment_errors import EnvironmentVariableMissingError
-from app.models.users import User
-from app.repositories.user_repository import UserRepository
 
 ALGORITHM = "HS256"
 
