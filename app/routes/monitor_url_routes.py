@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.dependencies import CurrentUser, VerifyURLMonitorOwnership
 from app.repositories.url_monitor_repository import URLMonitorRepository
@@ -57,3 +57,9 @@ async def update_monitor_url(
 
     logger.info(f"SUCCESS: Updated URL monitor entry with ID: {url_monitor.id}")
     return url_monitor
+
+
+@router.delete("/{url_id}")
+async def delete_monitor_url(url_monitor: VerifyURLMonitorOwnership):
+    await url_monitor_repo.delete_url(url_monitor.id)
+    return Response({}, status_code=status.HTTP_204_NO_CONTENT)

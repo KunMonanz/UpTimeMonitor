@@ -13,7 +13,7 @@ class SMTPEngine(EmailEngine):
         recipients = [to_email] if isinstance(to_email, str) else to_email
         message = MessageSchema(
             subject=subject,
-            recipients=recipients,
+            recipients=recipients,  # type: ignore
             template_body=body,
             subtype=MessageType.html,
         )

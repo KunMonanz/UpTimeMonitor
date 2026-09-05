@@ -13,7 +13,7 @@ from app.config.security_config import (
     verify_password,
 )
 from app.dependencies import CurrentUser, get_db, security
-from app.repositories.error import UserDoesNotExist
+from app.errors.user_errors import UserDoesNotExist
 from app.repositories.user_repository import UserRepository
 from app.schemas.user_schema import (
     Token,
@@ -50,7 +50,7 @@ async def create_user_route(request: Request, payload: UserCreate):
         await dummy_hash_password()
 
         raise HTTPException(
-            detail="Account alread exists", status_code=status.HTTP_409_CONFLICT
+            detail="Account already exists", status_code=status.HTTP_409_CONFLICT
         )
 
     hashed_password = str(await hash_password(payload.password))

@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.config.database_config import SessionLocal
+from app.errors.url_monitor_errors import URLMonitorDoesNotExist
 from app.models.url_monitor import URLMonitor
-from app.repositories.error import URLMonitorDoesNotExist
 
 
 class URLMonitorRepository:
