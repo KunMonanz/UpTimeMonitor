@@ -55,6 +55,7 @@ EMAIL_ENGINE=smtp
 MAIL_USERNAME=your-email@example.com
 MAIL_PASSWORD=your-password
 MAIL_SERVER=smtp.example.com
+DOWN_ALERT_COOLDOWN_SECONDS=3600
 ```
 
 Generate a secure JWT secret with:
@@ -118,5 +119,6 @@ pytest -q
 ## Notes
 
 - The default monitoring cadence is configured in the Celery tasks (typically every 5 minutes). See `app/tasks/monitor_tasks.py` for scheduling and behaviour.
+- Down alerts are rate-limited per monitor with `DOWN_ALERT_COOLDOWN_SECONDS` (default: 3600 seconds).
 - Email templates are in `app/templates/emails`.
 - Use the `secrets_generator.py` helper to create strong secrets for `JWT_SECRET_KEY`.

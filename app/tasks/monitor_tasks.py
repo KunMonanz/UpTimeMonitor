@@ -1,18 +1,21 @@
+import asyncio
 from datetime import datetime, timezone
 
 import httpx
-import asyncio
 
-from app.config.database_config import SessionLocal
+from app.config.settings import DOWN_ALERT_COOLDOWN_SECONDS, FRONTEND_URL
+from app.dependencies import get_url_monitor_repo
 from app.models.url_monitor import URLMonitor
+from app.services.redis_client import redis_client
 from app.tasks import celery_config
 from app.tasks.celery_worker import celery_app
-from app.repositories.url_monitor_repository import URLMonitorRepository
 from app.tasks.email_tasks import send_async_email_task
-celery_app.conf.beat_schedule = celery_config.beat_schedule
-celery_app.conf.timezone = "UTC"
 
-from app.config.settings import FRONTEND_URL
+celery_app.conf.update(
+    beat_schedule=celery_config.beat_schedule,
+    timezone="UTC",
+)
+
 
 @celery_app.task
 def monitor_urls():
@@ -30,24 +33,34 @@ def monitor_urls():
             error_message = str(exc)
         return url_monitor, is_up, status_code, error_message
 
+    async def should_send_down_alert(monitor_id):
+        cooldown_key = f"monitor:{monitor_id}:down_alert"
+        return await redis_client.set(
+            cooldown_key,
+            "1",
+            ex=DOWN_ALERT_COOLDOWN_SECONDS,
+            nx=True,
+        )
+
     async def run_monitoring():
-     
-        url_monitor_repo = URLMonitorRepository()
+        url_monitor_repo = get_url_monitor_repo()
         urls = await url_monitor_repo.get_all_urls()
 
         async with httpx.AsyncClient(timeout=10.0) as client:
-            results = await asyncio.gather(
-                *(check_url(client, um) for um in urls)
-            )
+            results = await asyncio.gather(*(check_url(client, um) for um in urls))
 
         for url_monitor, is_up, status_code, error_message in results:
-            owner_email = url_monitor.owner.email  
+            owner_email = url_monitor.owner.email
 
             status_changed = await url_monitor_repo.update_url_status(
                 url_monitor.id, is_up, status_code
             )
 
-            if status_changed and not is_up:
+            if (
+                status_changed
+                and not is_up
+                and await should_send_down_alert(url_monitor.id)
+            ):
                 send_async_email_task.delay(  # type: ignore
                     to_email=owner_email,
                     subject=f"{url_monitor.name} is down",

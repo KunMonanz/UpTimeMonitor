@@ -1,84 +1,233 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Verify Your Email</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f4f5f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Verify your email</title>
+    </head>
+    <body
+        style="
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            font-family:
+                -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto,
+                Helvetica, Arial, sans-serif;
+            color: #111827;
+        "
+    >
+        <div style="display: none; max-height: 0; overflow: hidden; opacity: 0">
+            Confirm your email to finish setting up your UpTime Monitor account.
+        </div>
 
-  <!-- Preheader (hidden preview text) -->
-  <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
-    Confirm your email address to finish setting up your account.
-  </div>
+        <table
+            role="presentation"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            style="background-color: #f3f4f6; padding: 24px 12px"
+        >
+            <tr>
+                <td align="center">
+                    <table
+                        role="presentation"
+                        width="100%"
+                        cellpadding="0"
+                        cellspacing="0"
+                        style="
+                            max-width: 600px;
+                            background-color: #ffffff;
+                            border: 1px solid #e5e7eb;
+                            border-radius: 16px;
+                            overflow: hidden;
+                        "
+                    >
+                        <tr>
+                            <td
+                                style="
+                                    padding: 20px 24px;
+                                    border-bottom: 1px solid #e5e7eb;
+                                    background-color: #ffffff;
+                                "
+                            >
+                                <div
+                                    style="
+                                        font-size: 15px;
+                                        font-weight: 700;
+                                        color: #111827;
+                                    "
+                                >
+                                    UpTime Monitor
+                                </div>
+                            </td>
+                        </tr>
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7; padding:32px 16px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                        <tr>
+                            <td style="padding: 32px 24px 14px 24px">
+                                <h1
+                                    style="
+                                        margin: 0 0 10px 0;
+                                        font-size: 28px;
+                                        line-height: 1.2;
+                                        font-weight: 700;
+                                        color: #111827;
+                                    "
+                                >
+                                    Verify your email
+                                </h1>
+                                <p
+                                    style="
+                                        margin: 0 0 12px 0;
+                                        font-size: 15px;
+                                        line-height: 1.7;
+                                        color: #4b5563;
+                                    "
+                                >
+                                    Hi {{ username }}, thanks for signing up.
+                                    Confirm your email address to finish setting
+                                    up your account.
+                                </p>
+                                <p
+                                    style="
+                                        margin: 0;
+                                        font-size: 15px;
+                                        line-height: 1.7;
+                                        color: #4b5563;
+                                    "
+                                >
+                                    Once verified, you'll be able to start
+                                    creating monitors and receiving alerts.
+                                </p>
+                            </td>
+                        </tr>
 
-          <!-- Header -->
-          <tr>
-            <td style="background-color:#111827; padding:24px 32px;">
-              <span style="color:#ffffff; font-size:14px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase;">
-                UpTime Monitor
-              </span>
-            </td>
-          </tr>
+                        <tr>
+                            <td style="padding: 20px 24px 8px 24px">
+                                <table
+                                    role="presentation"
+                                    cellpadding="0"
+                                    cellspacing="0"
+                                >
+                                    <tr>
+                                        <td
+                                            style="
+                                                background-color: #111827;
+                                                border-radius: 10px;
+                                            "
+                                        >
+                                            <a
+                                                href="{{ verify_link }}"
+                                                target="_blank"
+                                                style="
+                                                    display: inline-block;
+                                                    padding: 13px 20px;
+                                                    font-size: 14px;
+                                                    font-weight: 700;
+                                                    color: #ffffff;
+                                                    text-decoration: none;
+                                                "
+                                            >
+                                                Verify email
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
 
-          <!-- Body -->
-          <tr>
-            <td style="padding:32px;">
-              <h1 style="margin:0 0 8px 0; font-size:20px; color:#111827;">
-                Hi {{ username }}, confirm your email
-              </h1>
-              <p style="margin:0 0 24px 0; font-size:14px; color:#6b7280; line-height:1.6;">
-                Thanks for signing up. Click the button below to verify your email address and activate your account.
-              </p>
+                        <tr>
+                            <td style="padding: 20px 24px">
+                                <table
+                                    role="presentation"
+                                    width="100%"
+                                    cellpadding="0"
+                                    cellspacing="0"
+                                    style="
+                                        border: 1px solid #e5e7eb;
+                                        border-radius: 14px;
+                                        background-color: #fcfcfd;
+                                    "
+                                >
+                                    <tr>
+                                        <td style="padding: 16px 18px">
+                                            <div
+                                                style="
+                                                    font-size: 12px;
+                                                    font-weight: 700;
+                                                    letter-spacing: 0.04em;
+                                                    text-transform: uppercase;
+                                                    color: #9ca3af;
+                                                    margin-bottom: 6px;
+                                                "
+                                            >
+                                                Link expires in
+                                            </div>
+                                            <div
+                                                style="
+                                                    font-size: 14px;
+                                                    line-height: 1.6;
+                                                    color: #111827;
+                                                "
+                                            >
+                                                {{ expiry_minutes }} minutes
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
 
-              <!-- CTA -->
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-                <tr>
-                  <td style="border-radius:8px; background-color:#2563eb;">
-                    <a href="{{ verify_link }}" target="_blank" style="display:inline-block; padding:12px 24px; font-size:14px; font-weight:600; color:#ffffff; text-decoration:none; border-radius:8px;">
-                      Verify Email
-                    </a>
-                  </td>
-                </tr>
-              </table>
+                        <tr>
+                            <td style="padding: 0 24px 24px 24px">
+                                <p
+                                    style="
+                                        margin: 0 0 8px 0;
+                                        font-size: 13px;
+                                        line-height: 1.6;
+                                        color: #6b7280;
+                                    "
+                                >
+                                    If the button doesn't open, copy and paste
+                                    this link into your browser:
+                                </p>
+                                <p
+                                    style="
+                                        margin: 0;
+                                        font-size: 13px;
+                                        line-height: 1.7;
+                                        color: #2563eb;
+                                        word-break: break-word;
+                                    "
+                                >
+                                    {{ verify_link }}
+                                </p>
+                            </td>
+                        </tr>
 
-              <!-- Details card -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:24px;">
-                <tr>
-                  <td style="padding:16px 20px;">
-                    <span style="display:block; font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">This link expires in</span>
-                    <span style="font-size:14px; color:#111827; font-weight:500;">{{ expiry_minutes }} minutes</span>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin:0 0 8px 0; font-size:13px; color:#9ca3af; line-height:1.5;">
-                If the button doesn't work, copy and paste this link into your browser:
-              </p>
-              <p style="margin:0; font-size:13px; color:#2563eb; word-break:break-all;">
-                {{ verify_link }}
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding:20px 32px; background-color:#f9fafb; border-top:1px solid #e5e7eb;">
-              <p style="margin:0; font-size:12px; color:#9ca3af; text-align:center; line-height:1.6;">
-                If you didn't create an account, you can safely ignore this email.
-              </p>
-            </td>
-          </tr>
-
+                        <tr>
+                            <td
+                                style="
+                                    padding: 20px 24px 28px 24px;
+                                    border-top: 1px solid #e5e7eb;
+                                    background-color: #fafafa;
+                                "
+                            >
+                                <p
+                                    style="
+                                        margin: 0;
+                                        font-size: 13px;
+                                        line-height: 1.6;
+                                        color: #6b7280;
+                                    "
+                                >
+                                    If you didn't create an account, you can
+                                    safely ignore this email.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
         </table>
-      </td>
-    </tr>
-  </table>
-
-</body>
+    </body>
 </html>

@@ -1,10 +1,12 @@
+import asyncio
 import logging
-from .celery_worker import celery_app
+
 from app.services.mailer import get_email_client
+
+from .celery_worker import celery_app
 
 logger = logging.getLogger(__name__)
 
-import asyncio
 
 @celery_app.task(
     bind=True,
@@ -14,7 +16,7 @@ import asyncio
     autoretry_for=(Exception,),
     retry_backoff=True,
     retry_backoff_max=600,
-    retry_jitter=True
+    retry_jitter=True,
 )
 def send_async_email_task(self, to_email: str, subject: str, body: dict, template_name):
     try:
@@ -30,4 +32,6 @@ def send_async_email_task(self, to_email: str, subject: str, body: dict, templat
 
 async def _send_email(to_email: str, subject: str, body: dict, template):
     mail_client = get_email_client()
-    await mail_client.send_email(to_email=to_email, subject=subject, body=body, template_name=template)
+    await mail_client.send_email(
+        to_email=to_email, subject=subject, body=body, template_name=template
+    )
