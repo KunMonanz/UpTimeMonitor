@@ -10,7 +10,7 @@ from app.dependencies import (
     get_url_monitor_repo,
 )
 from app.repositories.url_monitor_repository import URLMonitorRepository
-from app.routes.cache_keys import get_monnitor_lists_cache_key
+from app.routes.cache_keys import get_monitor_cache_key, get_monitor_lists_cache_key
 from app.schemas.monitor_url_schemas import (
     MonitorUrlCreate,
     MonitorUrlResponse,
@@ -46,7 +46,7 @@ async def get_all_monitor_urls(
     """Retrieve all URL monitor entries."""
     logger.info("INFO: Attempting to reurn all URL monitor entries")
 
-    cache_key = get_monnitor_lists_cache_key(current_user.id)
+    cache_key = await get_monitor_lists_cache_key(current_user.id)
     cached_data = redis_client.get(cache_key)
 
     if cached_data:
@@ -67,6 +67,18 @@ async def get_all_monitor_urls(
 @router.get("/{url_id}", response_model=MonitorUrlResponse)
 async def get_monitor_url(url_monitor: VerifyURLMonitorOwnership):
     """Retrieve a specific URL monitor entry by its ID."""
+    cache_key = await get_monitor_cache_key(url_monitor.owner_id, url_monitor.id)
+    cached_data = redis_client.get(cache_key)
+
+    if cached_data:
+        logger.info("SUCCESS: Returned all URL monitor entries")
+        return Response(content=cached_data, media_type="application/json")
+
+    ta = TypeAdapter(MonitorUrlResponse)
+    json_data = ta.dump_json(url_monitor)
+
+    redis_client.set(cache_key, json_data, ex=180)
+    logger.info("SUCCESS: Returned all URL monitor entries")
 
     return url_monitor
 
