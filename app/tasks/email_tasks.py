@@ -22,12 +22,12 @@ def send_async_email_task(self, to_email: str, subject: str, body: dict, templat
     try:
         asyncio.run(_send_email(to_email, subject, body, template_name))
         logger.info(f"Email successfully sent to {to_email}")
-    except Exception as exc:
+    except Exception:
         logger.warning(
             f"Failed sending email to {to_email}. "
             f"Attempt {self.request.retries}/{self.max_retries}. Retrying..."
         )
-        raise exc
+        raise
 
 
 async def _send_email(to_email: str, subject: str, body: dict, template):

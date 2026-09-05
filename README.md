@@ -105,6 +105,7 @@ celery -A app.tasks.celery_worker worker -l info
 - `GET /api/v1/monitors/` — List monitored URLs for the authenticated user
 - `GET /api/v1/monitors/{url_id}` — Get a specific monitor
 - `PATCH /api/v1/monitors/{url_id}` — Update a monitor
+- `DELETE /api/v1/monitors/{url_id}` — Delete a monitor
 
 Refer to `app/routes` for implementation details and request/response schemas.
 

@@ -1,13 +1,13 @@
 from email_validator import EmailNotValidError, validate_email
 
-from app.config.settings import BACKEND_URL, FRONTEND_URL
+from app.config.settings import BACKEND_URL
 from app.services.token_service import TokenService
 from app.tasks.email_tasks import send_async_email_task
 
 
 async def is_email(email: str) -> bool:
     try:
-        email_info = validate_email(email, check_deliverability=False)
+        validate_email(email, check_deliverability=False)
         return True
     except EmailNotValidError:
         return False
