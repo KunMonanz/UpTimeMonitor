@@ -1,4 +1,5 @@
 import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import TypeAdapter
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 async def create_monitor_url(
     payload: MonitorUrlCreate,
     current_user: CurrentUser,
-    url_monitor_repo: URLMonitorRepository = Depends(get_url_monitor_repo),
+    url_monitor_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
 ):
     """Create a new URL monitor entry."""
     logger.info("INFO: Attempting to create a new URL monitor entry")
@@ -40,7 +41,7 @@ async def create_monitor_url(
 @router.get("/", response_model=list[MonitorUrlResponse])
 async def get_all_monitor_urls(
     current_user: CurrentUser,
-    url_monitor_repo: URLMonitorRepository = Depends(get_url_monitor_repo),
+    url_monitor_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
 ):
     """Retrieve all URL monitor entries."""
     logger.info("INFO: Attempting to reurn all URL monitor entries")
@@ -74,7 +75,7 @@ async def get_monitor_url(url_monitor: VerifyURLMonitorOwnership):
 async def update_monitor_url(
     payload: MonitorUrlUpdate,
     url_monitor: VerifyURLMonitorOwnership,
-    url_monitor_repo: URLMonitorRepository = Depends(get_url_monitor_repo),
+    url_monitor_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
 ):
     """Update a specific URL monitor entry by its ID."""
 
@@ -87,6 +88,9 @@ async def update_monitor_url(
 
 
 @router.delete("/{url_id}")
-async def delete_monitor_url(url_monitor: VerifyURLMonitorOwnership):
+async def delete_monitor_url(
+    url_monitor: VerifyURLMonitorOwnership,
+    url_monitor_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
+):
     await url_monitor_repo.delete_url(url_monitor.id)
     return Response({}, status_code=status.HTTP_204_NO_CONTENT)

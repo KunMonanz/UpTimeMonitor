@@ -3,7 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.config.jwt_config import create_access_token
@@ -108,7 +108,7 @@ async def login_for_access_token(
 async def logout(
     request: Request,
     current_user: CurrentUser,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
 ):
     token = credentials.credentials
     jwt_service = JWTTokenService(redis=redis_client)
@@ -121,7 +121,7 @@ async def verify_email(
     request: Request,
     token: str,
     user_repo: Annotated[UserRepository, Depends(get_user_repo)],
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     token_service = TokenService(prefix="email_verify")
     user_id = await token_service.verify_token(token, consume=True)
