@@ -91,6 +91,28 @@ celery -A app.tasks.celery_worker beat -l info
 celery -A app.tasks.celery_worker worker -l info
 ```
 
+## Running with Docker Compose
+
+The Compose setup includes a one-off `migrate` service that runs:
+
+```bash
+alembic upgrade head
+```
+
+before `web`, `celery_worker`, and `celery_beat` start.
+
+Start everything with:
+
+```bash
+docker compose up --build
+```
+
+To run migrations manually inside Docker:
+
+```bash
+docker compose run --rm migrate
+```
+
 ## API Overview
 
 ### Authentication

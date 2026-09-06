@@ -3,6 +3,15 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
 
+  migrate:
+    build: .
+    command: alembic upgrade head
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    restart: "no"
+
   web:
     build: .
     command: uvicorn main:app --host 0.0.0.0 --port 8000
@@ -14,7 +23,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
 
   celery_worker:
     build: .
@@ -25,7 +37,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
 
   celery_beat:
     build: .
@@ -36,4 +51,7 @@ services:
     env_file:
       - .env
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully

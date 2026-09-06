@@ -6,7 +6,6 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.responses import Response
 
-from app.config.database_config import Base, engine
 from app.config.limiter import limiter
 from app.routes.monitor_url_routes import router as monitor_router
 from app.routes.user_routes import router as user_router
@@ -14,8 +13,6 @@ from app.routes.user_routes import router as user_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     yield
 
 
