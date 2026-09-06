@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid
@@ -6,7 +7,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
 from app.config.database_config import Base
-from app.models.users import User
+from app.models.users import group_monitors
+
+if TYPE_CHECKING:
+    from app.models.users import Group, User
 
 
 class URLMonitor(Base):
@@ -25,4 +29,11 @@ class URLMonitor(Base):
     last_status_code: Mapped[int | None] = mapped_column(nullable=True)
 
     owner: Mapped["User"] = relationship(back_populates="url_monitors", lazy="selectin")
-    owner_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False)
+    owner_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    groups: Mapped[list["Group"]] = relationship(
+        secondary=group_monitors,
+        back_populates="monitors",
+        lazy="selectin",
+    )

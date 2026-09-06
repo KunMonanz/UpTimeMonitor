@@ -33,6 +33,14 @@ def upgrade() -> None:
         sa.UniqueConstraint("username"),
     )
     op.create_table(
+        "groups",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("description", sa.String(), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("name"),
+    )
+    op.create_table(
         "url_monitor",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
@@ -42,12 +50,40 @@ def upgrade() -> None:
         sa.Column("last_checked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_status_code", sa.Integer(), nullable=True),
         sa.Column("owner_id", sa.Uuid(), nullable=False),
-        sa.ForeignKeyConstraint(["owner_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["owner_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "user_groups",
+        sa.Column("user_id", sa.Uuid(), nullable=False),
+        sa.Column("group_id", sa.Uuid(), nullable=False),
+        sa.ForeignKeyConstraint(["group_id"], ["groups.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("user_id", "group_id"),
+    )
+    op.create_table(
+        "group_admins",
+        sa.Column("user_id", sa.Uuid(), nullable=False),
+        sa.Column("group_id", sa.Uuid(), nullable=False),
+        sa.ForeignKeyConstraint(["group_id"], ["groups.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("user_id", "group_id"),
+    )
+    op.create_table(
+        "group_monitors",
+        sa.Column("group_id", sa.Uuid(), nullable=False),
+        sa.Column("monitor_id", sa.Uuid(), nullable=False),
+        sa.ForeignKeyConstraint(["group_id"], ["groups.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["monitor_id"], ["url_monitor.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("group_id", "monitor_id"),
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
+    op.drop_table("group_monitors")
+    op.drop_table("group_admins")
+    op.drop_table("user_groups")
     op.drop_table("url_monitor")
+    op.drop_table("groups")
     op.drop_table("users")
