@@ -56,6 +56,8 @@ MAIL_USERNAME=your-email@example.com
 MAIL_PASSWORD=your-password
 MAIL_SERVER=smtp.example.com
 DOWN_ALERT_COOLDOWN_SECONDS=3600
+VERIFY_EMAIL_COOLDOWN_SECONDS=300
+GROUP_INVITE_COOLDOWN_SECONDS=900
 ```
 
 Generate a secure JWT secret with:
@@ -120,6 +122,8 @@ docker compose run --rm migrate
 - `POST /api/v1/users/` — Create a user account
 - `POST /api/v1/users/login` — Log in and retrieve a JWT token
 - `GET /api/v1/users/verify-email?token=<token>` — Verify a user's email (link sent via email)
+- `GET /api/v1/users/id/{user_id}` — Get a user by ID
+- `GET /api/v1/users/username/{username}` — Get a user by username
 
 ### Monitors
 
@@ -160,5 +164,7 @@ pytest -q
 
 - The default monitoring cadence is configured in the Celery tasks (typically every 5 minutes). See `app/tasks/monitor_tasks.py` for scheduling and behaviour.
 - Down alerts are rate-limited per monitor with `DOWN_ALERT_COOLDOWN_SECONDS` (default: 3600 seconds).
+- Verification emails are rate-limited per user with `VERIFY_EMAIL_COOLDOWN_SECONDS` (default: 300 seconds).
+- Group invitation emails are rate-limited per group/email pair with `GROUP_INVITE_COOLDOWN_SECONDS` (default: 900 seconds).
 - Email templates are in `app/templates/emails`.
 - Use the `secrets_generator.py` helper to create strong secrets for `JWT_SECRET_KEY`.

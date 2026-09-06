@@ -7,22 +7,17 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.config.jwt_config import create_access_token
-from app.config.limiter import limiter
+from app.config.limiter import enforce_send_cooldown, limiter
 from app.config.security_config import (
     dummy_hash_password,
     hash_password,
     verify_password,
 )
+from app.config.settings import VERIFY_EMAIL_COOLDOWN_SECONDS
 from app.dependencies import CurrentUser, get_db, get_user_repo, security
-from app.errors.user_errors import UserDoesNotExist
+from app.errors.user_errors import TooManyRequestsError, UserDoesNotExist
 from app.repositories.user_repository import UserRepository
-from app.schemas.user_schema import (
-    Token,
-    UserCreate,
-    UserLogin,
-    UserResponse,
-    UserUsernameUpdate,
-)
+from app.schemas.user_schema import Token, UserCreate, UserLogin, UserResponse
 from app.services.redis_client import redis_client
 from app.services.token_service import JWTTokenService, TokenService
 from app.utils.email_utils import is_email, send_verification
@@ -87,6 +82,19 @@ async def login_for_access_token(
         )
 
     if not user.is_email_verified:
+        try:
+            await enforce_send_cooldown(
+                "verify-email",
+                str(user.id),
+                VERIFY_EMAIL_COOLDOWN_SECONDS,
+            )
+        except TooManyRequestsError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=str(exc),
+                headers={"Retry-After": str(exc.retry_after or 0)},
+            )
+
         token_service = TokenService(prefix="email_verify")
         await send_verification(
             user_id=str(user.id),
@@ -139,7 +147,7 @@ async def verify_email(
     return {"message": "Email verified successfully"}
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/id/{user_id}", response_model=UserResponse)
 async def get_user_by_id_route(
     user_id: UUID,
     current_user: CurrentUser,
@@ -153,7 +161,7 @@ async def get_user_by_id_route(
         )
 
 
-@router.get("/{username}", response_model=UserResponse)
+@router.get("/username/{username}", response_model=UserResponse)
 async def get_user_by_username_route(
     username: str,
     current_user: CurrentUser,
@@ -167,6 +175,6 @@ async def get_user_by_username_route(
         )
 
 
-# @router.patch("/{username}", response_model=UserResponse)
+# @router.patch("/username/{username}", response_model=UserResponse)
 # async def edit_username_route(payload: UserUsernameUpdate):
 #     pass

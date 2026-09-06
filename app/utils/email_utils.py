@@ -1,6 +1,6 @@
-from dns.tokenizer import IDENTIFIER
+from uuid import UUID
+
 from email_validator import EmailNotValidError, validate_email
-from uuid6 import UUID
 
 from app.config.settings import BACKEND_URL
 from app.services.token_service import TokenService
