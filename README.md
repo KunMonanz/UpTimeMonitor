@@ -123,13 +123,30 @@ docker compose run --rm migrate
 
 ### Monitors
 
-- `POST /api/v1/monitors/` — Create a monitored URL
+- `POST /api/v1/monitors/` — Create a monitored URL (personal by default, or group-owned when `group_id` is provided)
 - `GET /api/v1/monitors/` — List monitored URLs for the authenticated user
 - `GET /api/v1/monitors/{url_id}` — Get a specific monitor
 - `PATCH /api/v1/monitors/{url_id}` — Update a monitor
 - `DELETE /api/v1/monitors/{url_id}` — Delete a monitor
 
 Refer to `app/routes` for implementation details and request/response schemas.
+
+Example personal monitor payload:
+
+```json
+{
+  "url": "https://example.com"
+}
+```
+
+Example group-owned monitor payload:
+
+```json
+{
+  "url": "https://example.com",
+  "group_id": "your-group-uuid"
+}
+```
 
 ## Testing
 

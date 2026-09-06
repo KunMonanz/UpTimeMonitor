@@ -49,8 +49,15 @@ def upgrade() -> None:
         sa.Column("consecutive_failures", sa.Integer(), nullable=False),
         sa.Column("last_checked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_status_code", sa.Integer(), nullable=True),
-        sa.Column("owner_id", sa.Uuid(), nullable=False),
-        sa.ForeignKeyConstraint(["owner_id"], ["users.id"], ondelete="CASCADE"),
+        sa.Column("owner_user_id", sa.Uuid(), nullable=True),
+        sa.Column("owner_group_id", sa.Uuid(), nullable=True),
+        sa.CheckConstraint(
+            "(owner_user_id IS NOT NULL AND owner_group_id IS NULL) OR "
+            "(owner_user_id IS NULL AND owner_group_id IS NOT NULL)",
+            name="ck_url_monitor_exactly_one_owner",
+        ),
+        sa.ForeignKeyConstraint(["owner_group_id"], ["groups.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["owner_user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -69,19 +76,10 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("user_id", "group_id"),
     )
-    op.create_table(
-        "group_monitors",
-        sa.Column("group_id", sa.Uuid(), nullable=False),
-        sa.Column("monitor_id", sa.Uuid(), nullable=False),
-        sa.ForeignKeyConstraint(["group_id"], ["groups.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["monitor_id"], ["url_monitor.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("group_id", "monitor_id"),
-    )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_table("group_monitors")
     op.drop_table("group_admins")
     op.drop_table("user_groups")
     op.drop_table("url_monitor")

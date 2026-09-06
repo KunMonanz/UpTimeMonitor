@@ -1,23 +1,23 @@
+from uuid import UUID
+
 from pydantic import EmailStr
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.config.database_config import SessionLocal
 from app.errors.user_errors import UserDoesNotExist
 from app.models.users import User
 
 
 class UserRepository:
-    """Repository for URLMonitor model."""
+    """Repository for user model."""
 
     def __init__(self, db: AsyncSession):
-        self.db = SessionLocal()
+        self.db = db
 
     async def create_user(
         self, username: str, email: str, hashed_password: str
     ) -> User:
-        """Create a new user in the database."""
         username = username.lower()
 
         new_user = User(username=username, email=email, hashed_password=hashed_password)
@@ -27,7 +27,6 @@ class UserRepository:
         return new_user
 
     async def get_user_by_username(self, username: str) -> User:
-        """Retrieve a user by their username."""
         username = username.lower()
 
         query = select(User).where(User.username == username)
@@ -37,9 +36,7 @@ class UserRepository:
         except NoResultFound:
             raise UserDoesNotExist("User not found")
 
-    async def get_user_by_id(self, user_id) -> User:
-        """Retrieve a user by their di."""
-
+    async def get_user_by_id(self, user_id: UUID) -> User:
         query = select(User).where(User.id == user_id)
         result = await self.db.execute(query)
         try:
@@ -48,8 +45,6 @@ class UserRepository:
             raise UserDoesNotExist("User not found")
 
     async def get_user_by_email(self, email: EmailStr) -> User:
-        """Retrieve a user by their di."""
-
         query = select(User).where(User.email == email)
         result = await self.db.execute(query)
         try:

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, ConfigDict, HttpUrl
 
 
 class MonitorUrlBase(BaseModel):
@@ -8,7 +8,7 @@ class MonitorUrlBase(BaseModel):
 
 
 class MonitorUrlCreate(MonitorUrlBase):
-    pass
+    group_id: UUID | None = None
 
 
 class MonitorUrlUpdate(MonitorUrlBase):
@@ -18,6 +18,7 @@ class MonitorUrlUpdate(MonitorUrlBase):
 class MonitorUrlResponse(MonitorUrlBase):
     id: UUID
     is_up: bool
+    owner_user_id: UUID | None = None
+    owner_group_id: UUID | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

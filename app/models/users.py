@@ -35,21 +35,6 @@ group_admins = Table(
 )
 
 
-group_monitors = Table(
-    "group_monitors",
-    Base.metadata,
-    Column(
-        "group_id", Uuid, ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True
-    ),
-    Column(
-        "monitor_id",
-        Uuid,
-        ForeignKey("url_monitor.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-)
-
-
 class User(Base):
     __tablename__ = "users"
 
@@ -66,7 +51,10 @@ class User(Base):
         secondary=group_admins, back_populates="admins", lazy="selectin"
     )
     url_monitors: Mapped[list["URLMonitor"]] = relationship(
-        back_populates="owner", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="owner_user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        foreign_keys="URLMonitor.owner_user_id",
     )
 
 
@@ -84,7 +72,8 @@ class Group(Base):
         secondary=user_groups, back_populates="groups", lazy="selectin"
     )
     monitors: Mapped[list["URLMonitor"]] = relationship(
-        secondary=group_monitors,
-        back_populates="groups",
+        back_populates="owner_group",
+        cascade="all, delete-orphan",
         lazy="selectin",
+        foreign_keys="URLMonitor.owner_group_id",
     )

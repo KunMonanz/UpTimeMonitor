@@ -4,10 +4,7 @@ from uuid import UUID
 
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import (
-    HTTPBearer,
-    OAuth2PasswordBearer,
-)
+from fastapi.security import HTTPBearer, OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database_config import SessionLocal
@@ -16,6 +13,7 @@ from app.config.settings import JWT_SECRET_KEY
 from app.errors.environment_errors import EnvironmentVariableMissingError
 from app.models.url_monitor import URLMonitor
 from app.models.users import User
+from app.repositories.group_repository import GroupRepository
 from app.repositories.url_monitor_repository import URLMonitorRepository
 from app.repositories.user_repository import UserRepository
 from app.services.error import BlacklistedTokenError
@@ -34,6 +32,10 @@ async def get_db():
 
 def get_url_monitor_repo(db: AsyncSession = Depends(get_db)) -> URLMonitorRepository:
     return URLMonitorRepository(db)
+
+
+def get_group_repo(db: AsyncSession = Depends(get_db)) -> GroupRepository:
+    return GroupRepository(db)
 
 
 def get_user_repo(db: AsyncSession = Depends(get_db)) -> UserRepository:
@@ -80,7 +82,7 @@ async def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-async def verify_url_monitor_ownership(
+async def verify_url_monitor_access(
     url_id: UUID,
     current_user: CurrentUser,
     url_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
@@ -94,17 +96,50 @@ async def verify_url_monitor_ownership(
         )
         raise HTTPException(status_code=404, detail="URL monitor not found")
 
-    if url_monitor.owner_id != current_user.id:
-        logger.exception(
-            f"SECURITY: User {current_user.id} tried to view User {url_monitor.owner_id} URL monitor {url_id}"
+    if url_monitor.owner_user_id == current_user.id:
+        logger.info(
+            f"SUCCESS: Retrieved user-owned URL monitor entry with ID: {url_id}"
         )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized to view this URL Monitor",
+        return url_monitor
+
+    if url_monitor.owner_group is not None and (
+        any(member.id == current_user.id for member in url_monitor.owner_group.members)
+        or any(admin.id == current_user.id for admin in url_monitor.owner_group.admins)
+    ):
+        logger.info(
+            f"SUCCESS: Retrieved group-owned URL monitor entry with ID: {url_id}"
         )
+        return url_monitor
 
-    logger.info(f"SUCCESS: Retrieved URL monitor entry with ID: {url_id}")
-    return url_monitor
+    logger.exception(
+        f"SECURITY: User {current_user.id} tried to access URL monitor {url_id} without permission"
+    )
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Unauthorized to access this URL Monitor",
+    )
 
 
-VerifyURLMonitorOwnership = Annotated[URLMonitor, Depends(verify_url_monitor_ownership)]
+async def verify_url_monitor_management(
+    url_id: UUID,
+    current_user: CurrentUser,
+    url_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
+):
+    url_monitor = await verify_url_monitor_access(url_id, current_user, url_repo)
+
+    if url_monitor.owner_user_id == current_user.id:
+        return url_monitor
+
+    if url_monitor.owner_group is not None and any(
+        admin.id == current_user.id for admin in url_monitor.owner_group.admins
+    ):
+        return url_monitor
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Only group admins can modify this URL Monitor",
+    )
+
+
+AccessibleURLMonitor = Annotated[URLMonitor, Depends(verify_url_monitor_access)]
+ManageableURLMonitor = Annotated[URLMonitor, Depends(verify_url_monitor_management)]
