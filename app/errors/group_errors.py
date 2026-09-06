@@ -50,3 +50,13 @@ class UserNotGroupMemberError(GroupError):
     ):
         super().__init__(message)
         self.status_code = status_code
+
+
+class MonitorNotInGroupError(GroupError):
+    """Raised when a monitor is not part of the group."""
+
+    def __init__(
+        self, message: str = "Monitor is not in the group", status_code: int = 404
+    ):
+        super().__init__(message)
+        self.status_code = status_code

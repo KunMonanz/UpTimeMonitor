@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi._compat.v2 import Url
 from sqlalchemy.exc import IntegrityError
 
 from app.config.limiter import enforce_send_cooldown, limiter
@@ -9,13 +10,17 @@ from app.config.settings import GROUP_INVITE_COOLDOWN_SECONDS
 from app.dependencies import CurrentUser, get_group_repo, get_user_repo
 from app.errors.group_errors import (
     GroupDoesNotExistError,
+    MonitorNotInGroupError,
     UserNotGroupAdminError,
     UserNotGroupMemberError,
 )
+from app.errors.url_monitor_errors import URLMonitorDoesNotExist
 from app.errors.user_errors import TooManyRequestsError, UserDoesNotExist
 from app.repositories.group_repository import GroupRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.group_schema import AddMemberToGroup, GroupCreate, GroupResponse
+from app.schemas.monitor_url_schemas import MonitorUrlCreate
+from app.schemas.user_schema import UserResponse
 from app.services.token_service import TokenService
 from app.utils.email_utils import send_invitation_email
 
@@ -193,4 +198,136 @@ async def accept_invitation_route(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
+        )
+
+
+@router.get("/{group_id}/monitors", response_model=list[GroupResponse])
+async def get_group_monitors_route(
+    group_id: UUID,
+    current_user: CurrentUser,
+    group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
+):
+    try:
+        return await group_repo.get_group_urls(
+            group_id=group_id, user_id=current_user.id
+        )
+    except UserNotGroupMemberError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not a member of this group",
+        )
+    except GroupDoesNotExistError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found",
+        )
+
+
+@router.get("/{group_id}/members", response_model=list[UserResponse])
+async def get_group_members_route(
+    group_id: UUID,
+    current_user: CurrentUser,
+    group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
+):
+    try:
+        return await group_repo.get_group_members(
+            group_id=group_id, user_id=current_user.id
+        )
+    except UserNotGroupMemberError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not a member of this group",
+        )
+    except GroupDoesNotExistError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found",
+        )
+
+
+@router.delete(
+    "/{group_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def remove_group_member_route(
+    group_id: UUID,
+    member_id: UUID,
+    current_user: CurrentUser,
+    group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
+):
+    try:
+        await group_repo.remove_user_from_group(
+            group_id=group_id, member_id=member_id, admin_id=current_user.id
+        )
+    except UserNotGroupAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not an admin of this group",
+        )
+    except GroupDoesNotExistError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found",
+        )
+    except UserDoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+
+@router.post("/{group_id}/monitors")
+async def add_group_monitor_route(
+    group_id: UUID,
+    payload: MonitorUrlCreate,
+    current_user: CurrentUser,
+    group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
+):
+    try:
+        await group_repo.create_new_monitor_for_group(
+            group_id=group_id, url=payload.url, admin_id=current_user.id
+        )
+        return {"message": "Monitor added to group successfully"}
+    except UserNotGroupAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not an admin of this group",
+        )
+    except GroupDoesNotExistError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found",
+        )
+
+
+@router.delete("/{group_id}/monitors/{monitor_id}")
+async def remove_group_monitor_route(
+    group_id: UUID,
+    monitor_id: UUID,
+    current_user: CurrentUser,
+    group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
+):
+    try:
+        await group_repo.delete_monitor_from_group(
+            group_id=group_id, monitor_id=monitor_id, admin_id=current_user.id
+        )
+        return {"message": "Monitor removed from group successfully"}
+    except UserNotGroupAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not an admin of this group",
+        )
+    except GroupDoesNotExistError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found",
+        )
+    except URLMonitorDoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Monitor not found",
+        )
+    except MonitorNotInGroupError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Monitor is not part of this group",
         )
