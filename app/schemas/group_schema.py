@@ -16,3 +16,7 @@ class GroupResponse(GroupBase):
     id: UUID
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AddMemberToGroup(BaseModel):
+    email: str

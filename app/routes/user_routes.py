@@ -167,6 +167,6 @@ async def get_user_by_username_route(
         )
 
 
-@router.patch("/{username}", response_model=UserResponse)
-async def edit_username_route(payload: UserUsernameUpdate):
-    pass
+# @router.patch("/{username}", response_model=UserResponse)
+# async def edit_username_route(payload: UserUsernameUpdate):
+#     pass
