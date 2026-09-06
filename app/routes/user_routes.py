@@ -2,8 +2,9 @@ import uuid
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials
+from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.config.jwt_config import create_access_token
@@ -17,6 +18,7 @@ from app.config.settings import VERIFY_EMAIL_COOLDOWN_SECONDS
 from app.dependencies import CurrentUser, get_db, get_user_repo, security
 from app.errors.user_errors import TooManyRequestsError, UserDoesNotExist
 from app.repositories.user_repository import UserRepository
+from app.routes.cache_keys import get_user_by_username_cache_key, get_user_cache_key
 from app.schemas.user_schema import Token, UserCreate, UserLogin, UserResponse
 from app.services.redis_client import redis_client
 from app.services.token_service import JWTTokenService, TokenService
@@ -153,12 +155,28 @@ async def get_user_by_id_route(
     current_user: CurrentUser,
     user_repo: Annotated[UserRepository, Depends(get_user_repo)],
 ):
+    cache_key = await get_user_cache_key(user_id)
+    cached_data = await redis_client.get(cache_key)
+
+    if cached_data:
+        return Response(content=cached_data, media_type="application/json")
+
     try:
-        return await user_repo.get_user_by_id(user_id)
+        user = await user_repo.get_user_by_id(user_id)
     except UserDoesNotExist:
         raise HTTPException(
             detail="User not found", status_code=status.HTTP_404_NOT_FOUND
         )
+
+    ta = TypeAdapter(UserResponse)
+    response_data = ta.validate_python(user, from_attributes=True)
+    json_data = ta.dump_json(response_data)
+
+    await redis_client.set(cache_key, json_data, ex=180)
+    await redis_client.set(
+        await get_user_by_username_cache_key(user.username), json_data, ex=180
+    )
+    return user
 
 
 @router.get("/username/{username}", response_model=UserResponse)
@@ -167,14 +185,23 @@ async def get_user_by_username_route(
     current_user: CurrentUser,
     user_repo: Annotated[UserRepository, Depends(get_user_repo)],
 ):
+    cache_key = await get_user_by_username_cache_key(username)
+    cached_data = await redis_client.get(cache_key)
+
+    if cached_data:
+        return Response(content=cached_data, media_type="application/json")
+
     try:
-        return await user_repo.get_user_by_username(username)
+        user = await user_repo.get_user_by_username(username)
     except UserDoesNotExist:
         raise HTTPException(
             detail="User not found", status_code=status.HTTP_404_NOT_FOUND
         )
 
+    ta = TypeAdapter(UserResponse)
+    response_data = ta.validate_python(user, from_attributes=True)
+    json_data = ta.dump_json(response_data)
 
-# @router.patch("/username/{username}", response_model=UserResponse)
-# async def edit_username_route(payload: UserUsernameUpdate):
-#     pass
+    await redis_client.set(cache_key, json_data, ex=180)
+    await redis_client.set(await get_user_cache_key(user.id), json_data, ex=180)
+    return user

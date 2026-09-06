@@ -1,8 +1,8 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi._compat.v2 import Url
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import TypeAdapter
 from sqlalchemy.exc import IntegrityError
 
 from app.config.limiter import enforce_send_cooldown, limiter
@@ -16,15 +16,29 @@ from app.errors.group_errors import (
 )
 from app.errors.url_monitor_errors import URLMonitorDoesNotExist
 from app.errors.user_errors import TooManyRequestsError, UserDoesNotExist
+from app.models.users import Group
 from app.repositories.group_repository import GroupRepository
 from app.repositories.user_repository import UserRepository
+from app.routes.cache_keys import (
+    get_group_cache_key,
+    get_group_members_cache_key,
+    get_group_monitors_cache_key,
+    invalidate_group_caches,
+)
 from app.schemas.group_schema import AddMemberToGroup, GroupCreate, GroupResponse
-from app.schemas.monitor_url_schemas import MonitorUrlCreate
+from app.schemas.monitor_url_schemas import MonitorUrlCreate, MonitorUrlResponse
 from app.schemas.user_schema import UserResponse
+from app.services.redis_client import redis_client
 from app.services.token_service import TokenService
 from app.utils.email_utils import send_invitation_email
 
 router = APIRouter(prefix="/api/v1/groups", tags=["Groups"])
+
+
+def get_group_related_user_ids(group: Group) -> list[UUID]:
+    return [member.id for member in group.members] + [
+        admin.id for admin in group.admins
+    ]
 
 
 @limiter.limit("10/minute")
@@ -62,7 +76,7 @@ async def get_group_route(
     group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
 ):
     try:
-        return await group_repo.get_group_by_id(
+        group = await group_repo.get_group_by_id(
             group_id=group_id, user_id=current_user.id
         )
     except UserDoesNotExist:
@@ -81,6 +95,17 @@ async def get_group_route(
             detail="Group not found",
         )
 
+    cache_key = await get_group_cache_key(group_id)
+    cached_data = await redis_client.get(cache_key)
+    if cached_data:
+        return Response(content=cached_data, media_type="application/json")
+
+    ta = TypeAdapter(GroupResponse)
+    response_data = ta.validate_python(group, from_attributes=True)
+    json_data = ta.dump_json(response_data)
+    await redis_client.set(cache_key, json_data, ex=180)
+    return group
+
 
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_group_route(
@@ -89,7 +114,13 @@ async def delete_group_route(
     group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
 ):
     try:
+        group = await group_repo.ensure_group_admin(
+            group_id=group_id, admin_id=current_user.id
+        )
+        affected_user_ids = get_group_related_user_ids(group)
         await group_repo.delete_group(group_id=group_id, admin_id=current_user.id)
+        await invalidate_group_caches(group_id, affected_user_ids)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except UserDoesNotExist:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -182,6 +213,8 @@ async def accept_invitation_route(
         await group_repo.add_user_to_group(
             group_id=group_id, new_member_id=user.id, admin_id=inviter_id
         )
+        group = await group_repo.get_group_by_id_no_user_check(group_id)
+        await invalidate_group_caches(group_id, get_group_related_user_ids(group))
 
         return {"message": "Successfully joined the group"}
     except UserNotGroupAdminError:
@@ -201,14 +234,14 @@ async def accept_invitation_route(
         )
 
 
-@router.get("/{group_id}/monitors", response_model=list[GroupResponse])
+@router.get("/{group_id}/monitors", response_model=list[MonitorUrlResponse])
 async def get_group_monitors_route(
     group_id: UUID,
     current_user: CurrentUser,
     group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
 ):
     try:
-        return await group_repo.get_group_urls(
+        monitors = await group_repo.get_group_urls(
             group_id=group_id, user_id=current_user.id
         )
     except UserNotGroupMemberError:
@@ -221,6 +254,17 @@ async def get_group_monitors_route(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Group not found",
         )
+
+    cache_key = await get_group_monitors_cache_key(group_id)
+    cached_data = await redis_client.get(cache_key)
+    if cached_data:
+        return Response(content=cached_data, media_type="application/json")
+
+    ta = TypeAdapter(list[MonitorUrlResponse])
+    response_data = ta.validate_python(monitors, from_attributes=True)
+    json_data = ta.dump_json(response_data)
+    await redis_client.set(cache_key, json_data, ex=180)
+    return monitors
 
 
 @router.get("/{group_id}/members", response_model=list[UserResponse])
@@ -230,7 +274,7 @@ async def get_group_members_route(
     group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
 ):
     try:
-        return await group_repo.get_group_members(
+        members = await group_repo.get_group_members(
             group_id=group_id, user_id=current_user.id
         )
     except UserNotGroupMemberError:
@@ -243,6 +287,17 @@ async def get_group_members_route(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Group not found",
         )
+
+    cache_key = await get_group_members_cache_key(group_id)
+    cached_data = await redis_client.get(cache_key)
+    if cached_data:
+        return Response(content=cached_data, media_type="application/json")
+
+    ta = TypeAdapter(list[UserResponse])
+    response_data = ta.validate_python(members, from_attributes=True)
+    json_data = ta.dump_json(response_data)
+    await redis_client.set(cache_key, json_data, ex=180)
+    return members
 
 
 @router.delete(
@@ -258,6 +313,10 @@ async def remove_group_member_route(
         await group_repo.remove_user_from_group(
             group_id=group_id, member_id=member_id, admin_id=current_user.id
         )
+        group = await group_repo.get_group_by_id_no_user_check(group_id)
+        affected_user_ids = [member_id, *get_group_related_user_ids(group)]
+        await invalidate_group_caches(group_id, affected_user_ids)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except UserNotGroupAdminError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -286,6 +345,8 @@ async def add_group_monitor_route(
         await group_repo.create_new_monitor_for_group(
             group_id=group_id, url=payload.url, admin_id=current_user.id
         )
+        group = await group_repo.get_group_by_id_no_user_check(group_id)
+        await invalidate_group_caches(group_id, get_group_related_user_ids(group))
         return {"message": "Monitor added to group successfully"}
     except UserNotGroupAdminError:
         raise HTTPException(
@@ -310,6 +371,8 @@ async def remove_group_monitor_route(
         await group_repo.delete_monitor_from_group(
             group_id=group_id, monitor_id=monitor_id, admin_id=current_user.id
         )
+        group = await group_repo.get_group_by_id_no_user_check(group_id)
+        await invalidate_group_caches(group_id, get_group_related_user_ids(group))
         return {"message": "Monitor removed from group successfully"}
     except UserNotGroupAdminError:
         raise HTTPException(
