@@ -12,6 +12,7 @@ from app.dependencies import (
     get_url_monitor_repo,
 )
 from app.errors.group_errors import GroupDoesNotExistError, UserNotGroupAdminError
+from app.errors.url_monitor_errors import DuplicateURLMonitorForOwner
 from app.repositories.group_repository import GroupRepository
 from app.repositories.url_monitor_repository import URLMonitorRepository
 from app.routes.cache_keys import (
@@ -21,6 +22,7 @@ from app.routes.cache_keys import (
     invalidate_monitor_list_caches,
 )
 from app.routes.openapi_responses import (
+    CONFLICT_RESPONSE,
     FORBIDDEN_RESPONSE,
     NOT_FOUND_RESPONSE,
     UNAUTHORIZED_RESPONSE,
@@ -41,7 +43,12 @@ logger = logging.getLogger(__name__)
     "/",
     response_model=MonitorUrlResponse,
     status_code=status.HTTP_201_CREATED,
-    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        **FORBIDDEN_RESPONSE,
+        **NOT_FOUND_RESPONSE,
+        **CONFLICT_RESPONSE,
+    },
 )
 async def create_monitor_url(
     payload: MonitorUrlCreate,
@@ -53,9 +60,12 @@ async def create_monitor_url(
     logger.info("INFO: Attempting to create a new URL monitor entry")
 
     if payload.group_id is None:
-        new_url_monitor = await url_monitor_repo.add_user_owned_url(
-            payload.url, user_id=current_user.id
-        )
+        try:
+            new_url_monitor = await url_monitor_repo.add_user_owned_url(
+                payload.url, user_id=current_user.id
+            )
+        except DuplicateURLMonitorForOwner as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
         await invalidate_monitor_list_caches([current_user.id])
     else:
         try:
@@ -67,9 +77,12 @@ async def create_monitor_url(
         except UserNotGroupAdminError as exc:
             raise HTTPException(status_code=403, detail=str(exc))
 
-        new_url_monitor = await url_monitor_repo.add_group_owned_url(
-            payload.url, group_id=group.id
-        )
+        try:
+            new_url_monitor = await url_monitor_repo.add_group_owned_url(
+                payload.url, group_id=group.id
+            )
+        except DuplicateURLMonitorForOwner as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
         await invalidate_monitor_list_caches(
             [member.id for member in group.members]
             + [admin.id for admin in group.admins]
@@ -147,7 +160,12 @@ async def get_monitor_url(url_monitor: AccessibleURLMonitor):
 @router.patch(
     "/{url_id}",
     response_model=MonitorUrlResponse,
-    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        **FORBIDDEN_RESPONSE,
+        **NOT_FOUND_RESPONSE,
+        **CONFLICT_RESPONSE,
+    },
 )
 async def update_monitor_url(
     payload: MonitorUrlUpdate,
@@ -155,9 +173,12 @@ async def update_monitor_url(
     url_monitor_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
 ):
     """Update a specific URL monitor entry by its ID."""
-    updated_monitor = await url_monitor_repo.update_url(
-        url_id=url_monitor.id, url=payload.url
-    )
+    try:
+        updated_monitor = await url_monitor_repo.update_url(
+            url_id=url_monitor.id, url=payload.url
+        )
+    except DuplicateURLMonitorForOwner as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     if updated_monitor is None:
         raise HTTPException(status_code=404, detail="URL monitor not found")
 

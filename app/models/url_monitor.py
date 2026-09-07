@@ -2,7 +2,15 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, Uuid
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    String,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
@@ -21,6 +29,10 @@ class URLMonitor(Base):
             "(owner_user_id IS NOT NULL AND owner_group_id IS NULL) OR "
             "(owner_user_id IS NULL AND owner_group_id IS NOT NULL)",
             name="ck_url_monitor_exactly_one_owner",
+        ),
+        UniqueConstraint("owner_user_id", "url", name="uq_url_monitor_owner_user_url"),
+        UniqueConstraint(
+            "owner_group_id", "url", name="uq_url_monitor_owner_group_url"
         ),
     )
 

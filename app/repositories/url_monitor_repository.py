@@ -6,7 +6,10 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.errors.url_monitor_errors import URLMonitorDoesNotExist
+from app.errors.url_monitor_errors import (
+    DuplicateURLMonitorForOwner,
+    URLMonitorDoesNotExist,
+)
 from app.models.url_monitor import URLMonitor
 from app.models.users import Group, group_admins, user_groups
 from app.utils.monitor_url_utils import get_monitor_name, normalize_monitor_url
@@ -26,8 +29,56 @@ class URLMonitorRepository:
             selectinload(URLMonitor.owner_group).selectinload(Group.admins),
         )
 
+    async def get_existing_owner_monitor(
+        self,
+        normalized_url: str,
+        owner_user_id: UUID | None = None,
+        owner_group_id: UUID | None = None,
+        exclude_monitor_id: UUID | None = None,
+    ) -> URLMonitor | None:
+        query = select(URLMonitor)
+
+        if owner_user_id is not None:
+            query = query.where(URLMonitor.owner_user_id == owner_user_id)
+        elif owner_group_id is not None:
+            query = query.where(URLMonitor.owner_group_id == owner_group_id)
+        else:
+            raise ValueError("An owner_user_id or owner_group_id is required")
+
+        if exclude_monitor_id is not None:
+            query = query.where(URLMonitor.id != exclude_monitor_id)
+
+        result = await self.db.execute(query)
+        monitors = result.scalars().all()
+
+        for monitor in monitors:
+            if normalize_monitor_url(monitor.url) == normalized_url:
+                return monitor
+
+        return None
+
+    async def ensure_owner_monitor_is_unique(
+        self,
+        normalized_url: str,
+        owner_user_id: UUID | None = None,
+        owner_group_id: UUID | None = None,
+        exclude_monitor_id: UUID | None = None,
+    ) -> None:
+        existing_monitor = await self.get_existing_owner_monitor(
+            normalized_url=normalized_url,
+            owner_user_id=owner_user_id,
+            owner_group_id=owner_group_id,
+            exclude_monitor_id=exclude_monitor_id,
+        )
+        if existing_monitor is not None:
+            raise DuplicateURLMonitorForOwner()
+
     async def add_user_owned_url(self, url: HttpUrl, user_id: UUID) -> URLMonitor:
         normalized_url = normalize_monitor_url(str(url))
+        await self.ensure_owner_monitor_is_unique(
+            normalized_url=normalized_url,
+            owner_user_id=user_id,
+        )
         url_monitor = URLMonitor(
             url=normalized_url,
             owner_user_id=user_id,
@@ -40,6 +91,10 @@ class URLMonitorRepository:
 
     async def add_group_owned_url(self, url: HttpUrl, group_id: UUID) -> URLMonitor:
         normalized_url = normalize_monitor_url(str(url))
+        await self.ensure_owner_monitor_is_unique(
+            normalized_url=normalized_url,
+            owner_group_id=group_id,
+        )
         url_monitor = URLMonitor(
             url=normalized_url,
             owner_group_id=group_id,
@@ -125,6 +180,12 @@ class URLMonitorRepository:
         url_monitor = await self.get_url_by_id(url_id)
         if url_monitor:
             normalized_url = normalize_monitor_url(str(url))
+            await self.ensure_owner_monitor_is_unique(
+                normalized_url=normalized_url,
+                owner_user_id=url_monitor.owner_user_id,
+                owner_group_id=url_monitor.owner_group_id,
+                exclude_monitor_id=url_monitor.id,
+            )
             url_monitor.url = normalized_url
             url_monitor.name = get_monitor_name(normalized_url)
             await self.db.commit()

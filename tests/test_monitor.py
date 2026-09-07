@@ -34,6 +34,27 @@ def test_create_group_owned_monitor_route_creates_monitor(
     assert data["owner_user_id"] is None
 
 
+def test_create_personal_monitor_route_rejects_duplicate_normalized_url_for_same_user(
+    client, create_user, auth_headers
+):
+    user = create_user("alice-dup", "alice-dup@example.com")
+
+    first_response = client.post(
+        "/api/v1/monitors/",
+        headers=auth_headers(user),
+        json={"url": "https://example.com"},
+    )
+    second_response = client.post(
+        "/api/v1/monitors/",
+        headers=auth_headers(user),
+        json={"url": "https://example.com/"},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert "already exists" in second_response.json()["detail"]
+
+
 def test_get_all_monitors_route_returns_accessible_monitors(
     client, create_user, create_group, create_monitor, auth_headers
 ):
@@ -100,6 +121,23 @@ def test_update_monitor_route_updates_monitor(
     assert response.status_code == 200
     assert response.json()["url"] == "https://updated.example.com/"
     assert get_monitor(monitor.id).url == "https://updated.example.com/"
+
+
+def test_update_monitor_route_rejects_duplicate_normalized_url_for_same_user(
+    client, create_user, create_monitor, auth_headers
+):
+    user = create_user("alice-update-dup", "alice-update-dup@example.com")
+    first_monitor = create_monitor("https://one.example.com", owner_user_id=user.id)
+    create_monitor("https://two.example.com", owner_user_id=user.id)
+
+    response = client.patch(
+        f"/api/v1/monitors/{first_monitor.id}",
+        headers=auth_headers(user),
+        json={"url": "https://two.example.com/", "status": True},
+    )
+
+    assert response.status_code == 409
+    assert "already exists" in response.json()["detail"]
 
 
 def test_delete_monitor_route_deletes_monitor(

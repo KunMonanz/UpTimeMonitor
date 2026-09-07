@@ -14,7 +14,10 @@ from app.errors.group_errors import (
     UserNotGroupAdminError,
     UserNotGroupMemberError,
 )
-from app.errors.url_monitor_errors import URLMonitorDoesNotExist
+from app.errors.url_monitor_errors import (
+    DuplicateURLMonitorForOwner,
+    URLMonitorDoesNotExist,
+)
 from app.errors.user_errors import TooManyRequestsError, UserDoesNotExist
 from app.models.users import Group
 from app.repositories.group_repository import GroupRepository
@@ -403,7 +406,12 @@ async def remove_group_member_route(
 
 @router.post(
     "/{group_id}/monitors",
-    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        **FORBIDDEN_RESPONSE,
+        **NOT_FOUND_RESPONSE,
+        **CONFLICT_RESPONSE,
+    },
 )
 async def add_group_monitor_route(
     group_id: UUID,
@@ -427,6 +435,11 @@ async def add_group_monitor_route(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Group not found",
+        )
+    except DuplicateURLMonitorForOwner as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
         )
 
 

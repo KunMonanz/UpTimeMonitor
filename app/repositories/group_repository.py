@@ -18,6 +18,7 @@ from app.errors.url_monitor_errors import URLMonitorDoesNotExist
 from app.errors.user_errors import UserDoesNotExist
 from app.models.url_monitor import URLMonitor
 from app.models.users import Group, User, user_groups
+from app.repositories.url_monitor_repository import URLMonitorRepository
 from app.utils.monitor_url_utils import get_monitor_name, normalize_monitor_url
 
 logger = logging.getLogger(__name__)
@@ -151,6 +152,10 @@ class GroupRepository:
     ) -> URLMonitor:
         group = await self.ensure_group_admin(group_id, admin_id=admin_id)
         normalized_url = normalize_monitor_url(str(url))
+        await URLMonitorRepository(self.db).ensure_owner_monitor_is_unique(
+            normalized_url=normalized_url,
+            owner_group_id=group.id,
+        )
         new_monitor = URLMonitor(
             name=get_monitor_name(normalized_url),
             url=normalized_url,
