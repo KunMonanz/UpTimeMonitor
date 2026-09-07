@@ -1,5 +1,4 @@
 import logging
-from urllib.parse import urlparse
 from uuid import UUID
 
 from pydantic import HttpUrl
@@ -19,6 +18,7 @@ from app.errors.url_monitor_errors import URLMonitorDoesNotExist
 from app.errors.user_errors import UserDoesNotExist
 from app.models.url_monitor import URLMonitor
 from app.models.users import Group, User, user_groups
+from app.utils.monitor_url_utils import get_monitor_name, normalize_monitor_url
 
 logger = logging.getLogger(__name__)
 
@@ -150,8 +150,12 @@ class GroupRepository:
         self, group_id: UUID, url: HttpUrl, admin_id: UUID
     ) -> URLMonitor:
         group = await self.ensure_group_admin(group_id, admin_id=admin_id)
-        name = urlparse(str(url)).netloc or urlparse(str(url)).path
-        new_monitor = URLMonitor(name=name, url=str(url), owner_group_id=group.id)
+        normalized_url = normalize_monitor_url(str(url))
+        new_monitor = URLMonitor(
+            name=get_monitor_name(normalized_url),
+            url=normalized_url,
+            owner_group_id=group.id,
+        )
         self.db.add(new_monitor)
         try:
             await self.db.commit()
