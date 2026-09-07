@@ -4,8 +4,8 @@ from app.models.url_monitor import URLMonitor
 from app.services.redis_client import redis_client
 
 
-async def get_monitor_lists_cache_key(user_id: UUID):
-    return f"user:{user_id!s}:monitors"
+async def get_monitor_lists_cache_key(user_id: UUID, offset: int, limit: int):
+    return f"user:{user_id!s}:monitors:{offset}:{limit}"
 
 
 async def get_monitor_cache_key(monitor_id: UUID):
@@ -16,12 +16,12 @@ async def get_group_cache_key(group_id: UUID):
     return f"group:{group_id!s}"
 
 
-async def get_group_members_cache_key(group_id: UUID):
-    return f"group:{group_id!s}:members"
+async def get_group_members_cache_key(group_id: UUID, offset: int, limit: int):
+    return f"group:{group_id!s}:members:{offset}:{limit}"
 
 
-async def get_group_monitors_cache_key(group_id: UUID):
-    return f"group:{group_id!s}:monitors"
+async def get_group_monitors_cache_key(group_id: UUID, offset: int, limit: int):
+    return f"group:{group_id!s}:monitors:{offset}:{limit}"
 
 
 async def get_user_cache_key(user_id: UUID):
@@ -32,22 +32,23 @@ async def get_user_by_username_cache_key(username: str):
     return f"user:username:{username.lower()}"
 
 
+async def _delete_pattern(pattern: str):
+    keys = await redis_client.keys(pattern)
+    if keys:
+        await redis_client.delete(*keys)
+
+
 async def invalidate_monitor_list_caches(user_ids: list[UUID]):
-    cache_keys = [
-        await get_monitor_lists_cache_key(user_id) for user_id in set(user_ids)
-    ]
-    if cache_keys:
-        await redis_client.delete(*cache_keys)
+    for user_id in set(user_ids):
+        await _delete_pattern(f"user:{user_id!s}:monitors:*")
 
 
 async def invalidate_group_caches(
     group_id: UUID, affected_user_ids: list[UUID] | None = None
 ):
-    await redis_client.delete(
-        await get_group_cache_key(group_id),
-        await get_group_members_cache_key(group_id),
-        await get_group_monitors_cache_key(group_id),
-    )
+    await redis_client.delete(await get_group_cache_key(group_id))
+    await _delete_pattern(f"group:{group_id!s}:members:*")
+    await _delete_pattern(f"group:{group_id!s}:monitors:*")
     if affected_user_ids:
         await invalidate_monitor_list_caches(affected_user_ids)
 

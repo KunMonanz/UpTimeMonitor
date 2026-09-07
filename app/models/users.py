@@ -18,7 +18,11 @@ user_groups = Table(
         "user_id", Uuid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     ),
     Column(
-        "group_id", Uuid, ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True
+        "group_id",
+        Uuid,
+        ForeignKey("groups.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
     ),
 )
 
@@ -30,7 +34,11 @@ group_admins = Table(
         "user_id", Uuid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     ),
     Column(
-        "group_id", Uuid, ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True
+        "group_id",
+        Uuid,
+        ForeignKey("groups.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
     ),
 )
 

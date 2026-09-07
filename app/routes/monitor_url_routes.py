@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import TypeAdapter
 
 from app.dependencies import (
@@ -20,11 +20,17 @@ from app.routes.cache_keys import (
     invalidate_monitor_caches,
     invalidate_monitor_list_caches,
 )
+from app.routes.openapi_responses import (
+    FORBIDDEN_RESPONSE,
+    NOT_FOUND_RESPONSE,
+    UNAUTHORIZED_RESPONSE,
+)
 from app.schemas.monitor_url_schemas import (
     MonitorUrlCreate,
     MonitorUrlResponse,
     MonitorUrlUpdate,
 )
+from app.schemas.pagination import PaginatedResponse
 from app.services.redis_client import redis_client
 
 router = APIRouter(prefix="/api/v1/monitors", tags=["Monitor URL"])
@@ -32,7 +38,10 @@ logger = logging.getLogger(__name__)
 
 
 @router.post(
-    "/", response_model=MonitorUrlResponse, status_code=status.HTTP_201_CREATED
+    "/",
+    response_model=MonitorUrlResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
 )
 async def create_monitor_url(
     payload: MonitorUrlCreate,
@@ -70,34 +79,52 @@ async def create_monitor_url(
     return new_url_monitor
 
 
-@router.get("/", response_model=list[MonitorUrlResponse])
+@router.get(
+    "/",
+    response_model=PaginatedResponse[MonitorUrlResponse],
+    responses={**UNAUTHORIZED_RESPONSE},
+)
 async def get_all_monitor_urls(
     current_user: CurrentUser,
     url_monitor_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],
+    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
 ):
-    """Retrieve all URL monitor entries accessible to the current user."""
-    logger.info("INFO: Attempting to return all accessible URL monitor entries")
+    """Retrieve paginated URL monitor entries accessible to the current user."""
+    logger.info("INFO: Attempting to return accessible URL monitor entries")
 
-    cache_key = await get_monitor_lists_cache_key(current_user.id)
+    cache_key = await get_monitor_lists_cache_key(current_user.id, offset, limit)
     cached_data = await redis_client.get(cache_key)
 
     if cached_data:
-        logger.info("SUCCESS: Returned all accessible URL monitor entries")
+        logger.info("SUCCESS: Returned cached accessible URL monitor entries")
         return Response(content=cached_data, media_type="application/json")
 
-    url_monitors = await url_monitor_repo.get_all_accessible_urls(current_user.id)
+    url_monitors, total = await url_monitor_repo.get_all_accessible_urls(
+        current_user.id, offset=offset, limit=limit
+    )
 
-    ta = TypeAdapter(list[MonitorUrlResponse])
-    response_data = ta.validate_python(url_monitors, from_attributes=True)
-    json_data = ta.dump_json(response_data)
+    item_adapter = TypeAdapter(list[MonitorUrlResponse])
+    items = item_adapter.validate_python(url_monitors, from_attributes=True)
+    response_payload = PaginatedResponse[MonitorUrlResponse](
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+    json_data = response_payload.model_dump_json()
 
     await redis_client.set(cache_key, json_data, ex=180)
 
-    logger.info("SUCCESS: Returned all accessible URL monitor entries")
-    return url_monitors
+    logger.info("SUCCESS: Returned accessible URL monitor entries")
+    return response_payload
 
 
-@router.get("/{url_id}", response_model=MonitorUrlResponse)
+@router.get(
+    "/{url_id}",
+    response_model=MonitorUrlResponse,
+    responses={**UNAUTHORIZED_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def get_monitor_url(url_monitor: AccessibleURLMonitor):
     """Retrieve a specific URL monitor entry by its ID."""
     cache_key = await get_monitor_cache_key(url_monitor.id)
@@ -117,7 +144,11 @@ async def get_monitor_url(url_monitor: AccessibleURLMonitor):
     return url_monitor
 
 
-@router.patch("/{url_id}", response_model=MonitorUrlResponse)
+@router.patch(
+    "/{url_id}",
+    response_model=MonitorUrlResponse,
+    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def update_monitor_url(
     payload: MonitorUrlUpdate,
     url_monitor: ManageableURLMonitor,
@@ -135,7 +166,10 @@ async def update_monitor_url(
     return updated_monitor
 
 
-@router.delete("/{url_id}")
+@router.delete(
+    "/{url_id}",
+    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def delete_monitor_url(
     url_monitor: ManageableURLMonitor,
     url_monitor_repo: Annotated[URLMonitorRepository, Depends(get_url_monitor_repo)],

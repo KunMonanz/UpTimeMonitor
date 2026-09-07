@@ -45,8 +45,31 @@ def test_get_all_monitors_route_returns_accessible_monitors(
     response = client.get("/api/v1/monitors/", headers=auth_headers(user))
 
     assert response.status_code == 200
-    urls = {item["url"] for item in response.json()}
+    data = response.json()
+    assert data["total"] == 2
+    assert data["offset"] == 0
+    assert data["limit"] == 20
+    urls = {item["url"] for item in data["items"]}
     assert urls == {"https://personal.example.com/", "https://group.example.com/"}
+
+
+def test_get_all_monitors_route_supports_pagination(
+    client, create_user, create_monitor, auth_headers
+):
+    user = create_user("alice", "alice@example.com")
+    create_monitor("https://one.example.com", owner_user_id=user.id)
+    create_monitor("https://two.example.com", owner_user_id=user.id)
+
+    response = client.get(
+        "/api/v1/monitors/?offset=0&limit=1", headers=auth_headers(user)
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 2
+    assert data["offset"] == 0
+    assert data["limit"] == 1
+    assert len(data["items"]) == 1
 
 
 def test_get_monitor_route_returns_monitor(

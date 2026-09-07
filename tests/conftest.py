@@ -3,6 +3,7 @@ import os
 import sys
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any, cast
 from uuid import UUID
@@ -76,6 +77,9 @@ class FakeRedis:
             return -2
         ttl = self._ttl.get(key)
         return -1 if ttl is None else ttl
+
+    async def keys(self, pattern: str):
+        return [key for key in self._store if fnmatch(key, pattern)]
 
 
 @pytest.fixture

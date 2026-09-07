@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from pydantic import HttpUrl
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -42,29 +42,41 @@ class URLMonitorRepository:
         await self.db.refresh(url_monitor)
         return url_monitor
 
-    async def get_all_accessible_urls(self, user_id: UUID):
+    async def get_all_accessible_urls(
+        self, user_id: UUID, offset: int = 0, limit: int = 20
+    ) -> tuple[list[URLMonitor], int]:
         member_group_ids = select(user_groups.c.group_id).where(
             user_groups.c.user_id == user_id
         )
         admin_group_ids = select(group_admins.c.group_id).where(
             group_admins.c.user_id == user_id
         )
+        filter_clause = or_(
+            URLMonitor.owner_user_id == user_id,
+            URLMonitor.owner_group_id.in_(member_group_ids),
+            URLMonitor.owner_group_id.in_(admin_group_ids),
+        )
+
+        count_query = select(func.count()).select_from(URLMonitor).where(filter_clause)
+        total = await self.db.scalar(count_query)
+
         query = (
             select(URLMonitor)
-            .where(
-                or_(
-                    URLMonitor.owner_user_id == user_id,
-                    URLMonitor.owner_group_id.in_(member_group_ids),
-                    URLMonitor.owner_group_id.in_(admin_group_ids),
-                )
-            )
+            .where(filter_clause)
+            .order_by(URLMonitor.id.desc())
+            .offset(offset)
+            .limit(limit)
             .options(*self._monitor_loader_options())
         )
         result = await self.db.execute(query)
-        return result.scalars().all()
+        return list(result.scalars().all()), total or 0
 
     async def get_all_urls(self):
-        query = select(URLMonitor).options(*self._monitor_loader_options())
+        query = (
+            select(URLMonitor)
+            .order_by(URLMonitor.id.desc())
+            .options(*self._monitor_loader_options())
+        )
         result = await self.db.execute(query)
         return result.scalars().all()
 

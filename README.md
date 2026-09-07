@@ -128,10 +128,20 @@ docker compose run --rm migrate
 ### Monitors
 
 - `POST /api/v1/monitors/` — Create a monitored URL (personal by default, or group-owned when `group_id` is provided)
-- `GET /api/v1/monitors/` — List monitored URLs for the authenticated user
+- `GET /api/v1/monitors/` — List monitored URLs for the authenticated user (`offset` and `limit` supported)
 - `GET /api/v1/monitors/{url_id}` — Get a specific monitor
 - `PATCH /api/v1/monitors/{url_id}` — Update a monitor
 - `DELETE /api/v1/monitors/{url_id}` — Delete a monitor
+
+Collection endpoints support pagination with `offset` and `limit` query parameters.
+
+Examples:
+
+```text
+GET /api/v1/monitors/?offset=0&limit=20
+GET /api/v1/groups/{group_id}/members?offset=0&limit=20
+GET /api/v1/groups/{group_id}/monitors?offset=0&limit=20
+```
 
 Refer to `app/routes` for implementation details and request/response schemas.
 

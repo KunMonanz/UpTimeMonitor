@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from pydantic import HttpUrl
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,7 +18,7 @@ from app.errors.group_errors import (
 from app.errors.url_monitor_errors import URLMonitorDoesNotExist
 from app.errors.user_errors import UserDoesNotExist
 from app.models.url_monitor import URLMonitor
-from app.models.users import Group, User
+from app.models.users import Group, User, user_groups
 
 logger = logging.getLogger(__name__)
 
@@ -195,10 +195,52 @@ class GroupRepository:
             await self.db.rollback()
             raise
 
-    async def get_group_urls(self, group_id: UUID, user_id: UUID) -> list[URLMonitor]:
+    async def get_group_urls(
+        self, group_id: UUID, user_id: UUID, offset: int = 0, limit: int = 20
+    ) -> tuple[list[URLMonitor], int]:
         group = await self.ensure_group_member(group_id, user_id)
-        return group.monitors
 
-    async def get_group_members(self, group_id: UUID, user_id: UUID) -> list[User]:
+        count_query = (
+            select(func.count())
+            .select_from(URLMonitor)
+            .where(URLMonitor.owner_group_id == group.id)
+        )
+        total = await self.db.scalar(count_query)
+
+        query = (
+            select(URLMonitor)
+            .where(URLMonitor.owner_group_id == group.id)
+            .order_by(URLMonitor.id.desc())
+            .offset(offset)
+            .limit(limit)
+            .options(
+                selectinload(URLMonitor.owner_user),
+                selectinload(URLMonitor.owner_group).selectinload(Group.members),
+                selectinload(URLMonitor.owner_group).selectinload(Group.admins),
+            )
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all()), total or 0
+
+    async def get_group_members(
+        self, group_id: UUID, user_id: UUID, offset: int = 0, limit: int = 20
+    ) -> tuple[list[User], int]:
         group = await self.ensure_group_member(group_id, user_id)
-        return group.members
+
+        count_query = (
+            select(func.count())
+            .select_from(user_groups)
+            .where(user_groups.c.group_id == group.id)
+        )
+        total = await self.db.scalar(count_query)
+
+        query = (
+            select(User)
+            .join(user_groups, user_groups.c.user_id == User.id)
+            .where(user_groups.c.group_id == group.id)
+            .order_by(User.username.asc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all()), total or 0

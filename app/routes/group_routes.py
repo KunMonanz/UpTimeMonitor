@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import TypeAdapter
 from sqlalchemy.exc import IntegrityError
 
@@ -25,8 +25,17 @@ from app.routes.cache_keys import (
     get_group_monitors_cache_key,
     invalidate_group_caches,
 )
+from app.routes.openapi_responses import (
+    BAD_REQUEST_RESPONSE,
+    CONFLICT_RESPONSE,
+    FORBIDDEN_RESPONSE,
+    NOT_FOUND_RESPONSE,
+    TOO_MANY_REQUESTS_RESPONSE,
+    UNAUTHORIZED_RESPONSE,
+)
 from app.schemas.group_schema import AddMemberToGroup, GroupCreate, GroupResponse
 from app.schemas.monitor_url_schemas import MonitorUrlCreate, MonitorUrlResponse
+from app.schemas.pagination import PaginatedResponse
 from app.schemas.user_schema import UserResponse
 from app.services.redis_client import redis_client
 from app.services.token_service import TokenService
@@ -42,7 +51,17 @@ def get_group_related_user_ids(group: Group) -> list[UUID]:
 
 
 @limiter.limit("10/minute")
-@router.post("/", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=GroupResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        **NOT_FOUND_RESPONSE,
+        **CONFLICT_RESPONSE,
+        **TOO_MANY_REQUESTS_RESPONSE,
+    },
+)
 async def create_group_route(
     request: Request,
     payload: GroupCreate,
@@ -68,7 +87,16 @@ async def create_group_route(
 
 
 @limiter.limit("20/minute")
-@router.get("/{group_id}", response_model=GroupResponse)
+@router.get(
+    "/{group_id}",
+    response_model=GroupResponse,
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        **FORBIDDEN_RESPONSE,
+        **NOT_FOUND_RESPONSE,
+        **TOO_MANY_REQUESTS_RESPONSE,
+    },
+)
 async def get_group_route(
     request: Request,
     group_id: UUID,
@@ -107,7 +135,11 @@ async def get_group_route(
     return group
 
 
-@router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{group_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def delete_group_route(
     group_id: UUID,
     current_user: CurrentUser,
@@ -138,7 +170,15 @@ async def delete_group_route(
         )
 
 
-@router.post("/{group_id}/invite")
+@router.post(
+    "/{group_id}/invite",
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        **FORBIDDEN_RESPONSE,
+        **NOT_FOUND_RESPONSE,
+        **TOO_MANY_REQUESTS_RESPONSE,
+    },
+)
 @limiter.limit("5/hour")
 async def send_invitation_route(
     request: Request,
@@ -189,7 +229,10 @@ async def send_invitation_route(
         )
 
 
-@router.get("/invites/accept")
+@router.get(
+    "/invites/accept",
+    responses={**BAD_REQUEST_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def accept_invitation_route(
     token: str,
     group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
@@ -234,15 +277,21 @@ async def accept_invitation_route(
         )
 
 
-@router.get("/{group_id}/monitors", response_model=list[MonitorUrlResponse])
+@router.get(
+    "/{group_id}/monitors",
+    response_model=PaginatedResponse[MonitorUrlResponse],
+    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def get_group_monitors_route(
     group_id: UUID,
     current_user: CurrentUser,
     group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
+    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
 ):
     try:
-        monitors = await group_repo.get_group_urls(
-            group_id=group_id, user_id=current_user.id
+        monitors, total = await group_repo.get_group_urls(
+            group_id=group_id, user_id=current_user.id, offset=offset, limit=limit
         )
     except UserNotGroupMemberError:
         raise HTTPException(
@@ -255,27 +304,38 @@ async def get_group_monitors_route(
             detail="Group not found",
         )
 
-    cache_key = await get_group_monitors_cache_key(group_id)
+    cache_key = await get_group_monitors_cache_key(group_id, offset, limit)
     cached_data = await redis_client.get(cache_key)
     if cached_data:
         return Response(content=cached_data, media_type="application/json")
 
-    ta = TypeAdapter(list[MonitorUrlResponse])
-    response_data = ta.validate_python(monitors, from_attributes=True)
-    json_data = ta.dump_json(response_data)
-    await redis_client.set(cache_key, json_data, ex=180)
-    return monitors
+    item_adapter = TypeAdapter(list[MonitorUrlResponse])
+    items = item_adapter.validate_python(monitors, from_attributes=True)
+    response_payload = PaginatedResponse[MonitorUrlResponse](
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+    await redis_client.set(cache_key, response_payload.model_dump_json(), ex=180)
+    return response_payload
 
 
-@router.get("/{group_id}/members", response_model=list[UserResponse])
+@router.get(
+    "/{group_id}/members",
+    response_model=PaginatedResponse[UserResponse],
+    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def get_group_members_route(
     group_id: UUID,
     current_user: CurrentUser,
     group_repo: Annotated[GroupRepository, Depends(get_group_repo)],
+    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
 ):
     try:
-        members = await group_repo.get_group_members(
-            group_id=group_id, user_id=current_user.id
+        members, total = await group_repo.get_group_members(
+            group_id=group_id, user_id=current_user.id, offset=offset, limit=limit
         )
     except UserNotGroupMemberError:
         raise HTTPException(
@@ -288,20 +348,27 @@ async def get_group_members_route(
             detail="Group not found",
         )
 
-    cache_key = await get_group_members_cache_key(group_id)
+    cache_key = await get_group_members_cache_key(group_id, offset, limit)
     cached_data = await redis_client.get(cache_key)
     if cached_data:
         return Response(content=cached_data, media_type="application/json")
 
-    ta = TypeAdapter(list[UserResponse])
-    response_data = ta.validate_python(members, from_attributes=True)
-    json_data = ta.dump_json(response_data)
-    await redis_client.set(cache_key, json_data, ex=180)
-    return members
+    item_adapter = TypeAdapter(list[UserResponse])
+    items = item_adapter.validate_python(members, from_attributes=True)
+    response_payload = PaginatedResponse[UserResponse](
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+    await redis_client.set(cache_key, response_payload.model_dump_json(), ex=180)
+    return response_payload
 
 
 @router.delete(
-    "/{group_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT
+    "/{group_id}/members/{member_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
 )
 async def remove_group_member_route(
     group_id: UUID,
@@ -334,7 +401,10 @@ async def remove_group_member_route(
         )
 
 
-@router.post("/{group_id}/monitors")
+@router.post(
+    "/{group_id}/monitors",
+    responses={**UNAUTHORIZED_RESPONSE, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def add_group_monitor_route(
     group_id: UUID,
     payload: MonitorUrlCreate,
@@ -360,7 +430,15 @@ async def add_group_monitor_route(
         )
 
 
-@router.delete("/{group_id}/monitors/{monitor_id}")
+@router.delete(
+    "/{group_id}/monitors/{monitor_id}",
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        **BAD_REQUEST_RESPONSE,
+        **FORBIDDEN_RESPONSE,
+        **NOT_FOUND_RESPONSE,
+    },
+)
 async def remove_group_monitor_route(
     group_id: UUID,
     monitor_id: UUID,

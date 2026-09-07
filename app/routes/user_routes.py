@@ -19,6 +19,14 @@ from app.dependencies import CurrentUser, get_db, get_user_repo, security
 from app.errors.user_errors import TooManyRequestsError, UserDoesNotExist
 from app.repositories.user_repository import UserRepository
 from app.routes.cache_keys import get_user_by_username_cache_key, get_user_cache_key
+from app.routes.openapi_responses import (
+    BAD_REQUEST_RESPONSE,
+    CONFLICT_RESPONSE,
+    FORBIDDEN_RESPONSE,
+    NOT_FOUND_RESPONSE,
+    TOO_MANY_REQUESTS_RESPONSE,
+    UNAUTHORIZED_RESPONSE,
+)
 from app.schemas.user_schema import Token, UserCreate, UserLogin, UserResponse
 from app.services.redis_client import redis_client
 from app.services.token_service import JWTTokenService, TokenService
@@ -27,7 +35,12 @@ from app.utils.email_utils import is_email, send_verification
 router = APIRouter(prefix="/api/v1/users", tags=["User and Authentication"])
 
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={**CONFLICT_RESPONSE, **TOO_MANY_REQUESTS_RESPONSE},
+)
 @limiter.limit("3/hour")
 async def create_user_route(
     request: Request,
@@ -59,7 +72,16 @@ async def create_user_route(
     )
 
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        **FORBIDDEN_RESPONSE,
+        **NOT_FOUND_RESPONSE,
+        **TOO_MANY_REQUESTS_RESPONSE,
+    },
+)
 @limiter.limit("10/minute")
 async def login_for_access_token(
     request: Request,
@@ -113,7 +135,10 @@ async def login_for_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.post("/logout")
+@router.post(
+    "/logout",
+    responses={**UNAUTHORIZED_RESPONSE, **TOO_MANY_REQUESTS_RESPONSE},
+)
 @limiter.limit("2/minute")
 async def logout(
     request: Request,
@@ -125,7 +150,14 @@ async def logout(
     await jwt_service.blacklist(token=token, identifier=str(current_user.id))
 
 
-@router.get("/verify-email")
+@router.get(
+    "/verify-email",
+    responses={
+        **BAD_REQUEST_RESPONSE,
+        **NOT_FOUND_RESPONSE,
+        **TOO_MANY_REQUESTS_RESPONSE,
+    },
+)
 @limiter.limit("20/minute")
 async def verify_email(
     request: Request,
@@ -149,7 +181,11 @@ async def verify_email(
     return {"message": "Email verified successfully"}
 
 
-@router.get("/id/{user_id}", response_model=UserResponse)
+@router.get(
+    "/id/{user_id}",
+    response_model=UserResponse,
+    responses={**UNAUTHORIZED_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def get_user_by_id_route(
     user_id: UUID,
     current_user: CurrentUser,
@@ -179,7 +215,11 @@ async def get_user_by_id_route(
     return user
 
 
-@router.get("/username/{username}", response_model=UserResponse)
+@router.get(
+    "/username/{username}",
+    response_model=UserResponse,
+    responses={**UNAUTHORIZED_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 async def get_user_by_username_route(
     username: str,
     current_user: CurrentUser,

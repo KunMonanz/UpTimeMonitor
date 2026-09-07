@@ -35,10 +35,10 @@ class URLMonitor(Base):
     last_status_code: Mapped[int | None] = mapped_column(nullable=True)
 
     owner_user_id: Mapped[UUID | None] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
     )
     owner_group_id: Mapped[UUID | None] = mapped_column(
-        Uuid, ForeignKey("groups.id", ondelete="CASCADE"), nullable=True
+        Uuid, ForeignKey("groups.id", ondelete="CASCADE"), nullable=True, index=True
     )
 
     owner_user: Mapped["User | None"] = relationship(
