@@ -12,6 +12,7 @@ def test_create_personal_monitor_route_creates_monitor(
     assert response.status_code == 201
     data = response.json()
     assert data["url"] == "https://example.com/"
+    assert data["is_up"] is True
     assert data["owner_user_id"] == str(user.id)
     assert data["owner_group_id"] is None
 
@@ -30,6 +31,7 @@ def test_create_group_owned_monitor_route_creates_monitor(
 
     assert response.status_code == 201
     data = response.json()
+    assert data["is_up"] is True
     assert data["owner_group_id"] == str(group.id)
     assert data["owner_user_id"] is None
 

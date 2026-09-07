@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     Uuid,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
@@ -39,7 +40,7 @@ class URLMonitor(Base):
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     url: Mapped[str] = mapped_column(String(255), nullable=False)
-    is_up: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_up: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     consecutive_failures: Mapped[int] = mapped_column(default=0)
     last_checked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

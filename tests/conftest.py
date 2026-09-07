@@ -254,7 +254,7 @@ def create_monitor(session_factory):
         url: str,
         owner_user_id: UUID | None = None,
         owner_group_id: UUID | None = None,
-        is_up: bool = False,
+        is_up: bool = True,
     ) -> URLMonitor:
         async def _inner():
             async with session_factory() as session:
