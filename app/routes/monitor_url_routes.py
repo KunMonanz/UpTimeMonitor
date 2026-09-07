@@ -31,7 +31,9 @@ router = APIRouter(prefix="/api/v1/monitors", tags=["Monitor URL"])
 logger = logging.getLogger(__name__)
 
 
-@router.post("/", response_model=MonitorUrlResponse, status_code=201)
+@router.post(
+    "/", response_model=MonitorUrlResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_monitor_url(
     payload: MonitorUrlCreate,
     current_user: CurrentUser,

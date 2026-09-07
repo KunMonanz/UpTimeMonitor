@@ -37,7 +37,7 @@ async def send_invitation_email(
 ):
     identifier = f"{email}:{group_id!s}:{inviter_id!s}"
     token = await token_service.generate_token(identifier=identifier, ttl=86400)
-    invite_link = f"https://{BACKEND_URL}/api/v1/groups/accept-invite?token={token}"
+    invite_link = f"https://{BACKEND_URL}/api/v1/groups/invites/accept?token={token}"
     send_async_email_task.delay(  # type: ignore
         to_email=email,
         subject="You're invited to join UpTimeMonitor",

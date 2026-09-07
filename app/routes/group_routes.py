@@ -189,7 +189,7 @@ async def send_invitation_route(
         )
 
 
-@router.get("/accept-invite")
+@router.get("/invites/accept")
 async def accept_invitation_route(
     token: str,
     group_repo: Annotated[GroupRepository, Depends(get_group_repo)],

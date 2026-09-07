@@ -151,7 +151,7 @@ class GroupRepository:
     ) -> URLMonitor:
         group = await self.ensure_group_admin(group_id, admin_id=admin_id)
         name = urlparse(str(url)).netloc or urlparse(str(url)).path
-        new_monitor = URLMonitor(name=name, url=url, owner_group_id=group.id)
+        new_monitor = URLMonitor(name=name, url=str(url), owner_group_id=group.id)
         self.db.add(new_monitor)
         try:
             await self.db.commit()

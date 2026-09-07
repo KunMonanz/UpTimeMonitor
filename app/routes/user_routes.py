@@ -27,7 +27,7 @@ from app.utils.email_utils import is_email, send_verification
 router = APIRouter(prefix="/api/v1/users", tags=["User and Authentication"])
 
 
-@router.post("/", response_model=UserResponse)
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/hour")
 async def create_user_route(
     request: Request,
